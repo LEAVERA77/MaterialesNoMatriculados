@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ENERSA · Gestión de Materiales</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -12,12 +12,6 @@
         .container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 28px; box-shadow: 0 15px 35px rgba(0, 20, 30, 0.12); padding: 2rem; }
         h1 { font-size: 1.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; border-bottom: 3px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.8rem; color: #0b2b4b; }
         h1 i { color: #1f7b8c; }
-        
-        /* Panel de Configuración */
-        .config-panel { background: #fff3cd; border: 1px solid #ffe69c; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; transition: opacity 0.3s; }
-        .config-panel h3 { margin-bottom: 1rem; color: #664d03; display: flex; align-items: center; gap: 0.5rem; }
-        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-        .config-grid input { width: 100%; padding: 0.8rem 1rem; border: 1.5px solid #d6e0ea; border-radius: 16px; font-family: inherit; }
         
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem; margin-bottom: 1.5rem; }
         .field-group { display: flex; flex-direction: column; gap: 0.45rem; }
@@ -65,26 +59,51 @@
         .modal-search { padding: 1rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; }
         .modal-search input, .modal-search select { width: 100%; padding: 0.8rem 1rem; border: 1.5px solid #cbdae6; border-radius: 12px; }
         .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
-        .table-stock { width: 100%; border-collapse: collapse; text-align: left; }
+        .table-stock { width: 100%; border-collapse: collapse; text-align: left; min-width: 600px; }
         .table-stock th, .table-stock td { padding: 0.8rem; border-bottom: 1px solid #edf2f7; font-size: 0.9rem; }
         .table-stock th { background: #f4f7fc; color: #2c4b66; font-weight: 600; position: sticky; top: 0; }
         .table-stock tr:hover { background: #f9fcff; }
         .stock-cero { color: #c42d2d; font-weight: bold; }
         .stock-bajo { color: #b4691f; font-weight: bold; }
         .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 1rem; background: #f8fafc; border-radius: 0 0 20px 20px; }
+        
+        .table-responsive { overflow-x: auto; width: 100%; }
 
-        .hidden { display: none !important; }
+        /* =========================================
+           DISEÑO RESPONSIVE (CELULARES Y TABLETS)
+           ========================================= */
+        @media (max-width: 768px) {
+            body { padding: 0.5rem; }
+            .container { padding: 1rem; border-radius: 16px; }
+            h1 { font-size: 1.4rem; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+            .form-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .item-row { flex-wrap: wrap; padding: 0.6rem; }
+            .material-col { flex: 1 1 100%; }
+            .qty-col { flex: 1 1 45%; }
+            .unit-col { flex: 1 1 45%; }
+            .action-col { flex: 1 1 100%; justify-content: flex-end; margin-top: 0.5rem; }
+            .button-bar { flex-direction: column; align-items: stretch; }
+            .btn-group { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; padding: 1rem; font-size: 1rem; }
+            .modal-content { max-height: 95vh; height: 95vh; border-radius: 12px; }
+            .modal-header h2 { font-size: 1.1rem; }
+            .modal-search { flex-direction: column; padding: 1rem; }
+            .modal-body { padding: 0.5rem; }
+            .modal-footer { flex-direction: column; padding: 1rem; }
+            .table-stock th, .table-stock td { font-size: 0.8rem; padding: 0.5rem; }
+            #showConfigBtn { width: 100%; justify-content: center; margin-top: 0.5rem; }
+        }
 
         /* Estilos de Impresión A4 */
         @media print {
             body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
             #printArea { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; }
-            .table-stock { width: 100%; border: 1px solid #000; }
+            .table-stock { width: 100%; border: 1px solid #000; min-width: 100%; }
             .table-stock th, .table-stock td { border: 1px solid #000; padding: 0.5rem; font-size: 0.8rem; color: #000; }
             .table-stock th { background: #eee !important; -webkit-print-color-adjust: exact; }
             .modal-overlay { position: static; background: transparent; display: block; padding: 0; }
-            .modal-content { box-shadow: none; max-height: none; max-width: none; border-radius: 0; }
+            .modal-content { box-shadow: none; max-height: none; max-width: none; border-radius: 0; height: auto; }
             .modal-header, .modal-search, .modal-footer { display: none !important; }
             .modal-body { overflow: visible; padding: 0; }
             .stock-cero, .stock-bajo { color: #000 !important; font-weight: normal; }
@@ -94,21 +113,10 @@
 </head>
 <body>
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.8rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 3px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.8rem;">
         <h1 style="border: none; margin: 0; padding: 0;"><i class="fas fa-clipboard-list"></i> Gestión de Materiales - ENERSA</h1>
-        <button type="button" id="showConfigBtn" class="btn btn-secondary hidden" style="font-size: 0.8rem; padding: 0.4rem 1rem;" title="Cambiar Token o Repositorio"><i class="fas fa-cog"></i> Configuración</button>
-    </div>
-
-    <!-- Panel de Configuración -->
-    <div class="config-panel hidden" id="configPanel">
-        <h3><i class="fab fa-github"></i> Configuración de Conexión</h3>
-        <div class="config-grid">
-            <div class="field-group"><label>Usuario / Organización</label><input type="text" id="ghUser" value="LEAVERA77"></div>
-            <div class="field-group"><label>Repositorio</label><input type="text" id="ghRepo" value="MaterialesNoMatriculados"></div>
-            <div class="field-group"><label>Ruta del Archivo</label><input type="text" id="ghPath" value="listado_materiales_ENERSA.xlsx"></div>
-            <div class="field-group"><label>Token de GitHub (Fine-grained)</label><input type="password" id="ghToken" placeholder="Pega aquí el token..."></div>
-        </div>
-        <button type="button" id="saveConfigBtn" class="btn btn-secondary" style="font-size: 0.9rem; padding: 0.6rem 1.5rem;"><i class="fas fa-save"></i> Guardar y Ocultar Panel</button>
+        <!-- El botón de configuración queda oculto por defecto ya que el token se inyecta por código -->
+        <button type="button" id="showConfigBtn" class="btn btn-secondary hidden" style="font-size: 0.8rem; padding: 0.4rem 1rem; display: none;" title="Cambiar Token o Repositorio"><i class="fas fa-cog"></i> Configuración</button>
     </div>
 
     <div class="form-grid">
@@ -136,7 +144,7 @@
     </div>
 
     <div class="button-bar">
-        <div id="modeBadge" style="font-weight: 600; padding: 0.5rem 1.5rem; background: #d4e6f0; border-radius: 40px;">Modo: Esperando acción</div>
+        <div id="modeBadge" style="font-weight: 600; padding: 0.5rem 1.5rem; background: #d4e6f0; border-radius: 40px; text-align: center;">Modo: Esperando acción</div>
         <div class="btn-group">
             <button type="button" id="verStockBtn" class="btn btn-info"><i class="fas fa-boxes"></i> Ver Stock</button>
             <button type="button" id="verHistorialBtn" class="btn btn-success"><i class="fas fa-history"></i> Historial</button>
@@ -156,9 +164,9 @@
             <button type="button" id="closeStockBtn">&times;</button>
         </div>
         <div class="modal-search">
-            <input type="text" id="stockSearchInput" placeholder="Buscar material por nombre o especificación...">
+            <input type="text" id="stockSearchInput" placeholder="Buscar material...">
         </div>
-        <div class="modal-body" id="printAreaStock">
+        <div class="modal-body table-responsive" id="printAreaStock">
             <table class="table-stock" id="stockTable">
                 <thead>
                     <tr>
@@ -187,10 +195,9 @@
         <div class="modal-search">
             <select id="filterUserSelect">
                 <option value="">Todos los usuarios</option>
-                <!-- Se llena dinámicamente -->
             </select>
         </div>
-        <div class="modal-body" id="printAreaHistory">
+        <div class="modal-body table-responsive" id="printAreaHistory">
             <table class="table-stock" id="historyTable">
                 <thead>
                     <tr>
@@ -216,15 +223,30 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // ==========================================
-        // 1. VARIABLES Y CONFIGURACIÓN
+        // 1. CONFIGURACIÓN "INCRUSTADA"
         // ==========================================
-        let ghUser, ghRepo, ghPath, ghToken;
+        // Datos fijos del repositorio
+        const ghUser = "LEAVERA77";
+        const ghRepo = "MaterialesNoMatriculados";
+        const ghPath = "listado_materiales_ENERSA.xlsx";
+        
+        // Token Ofuscado en Base64 para evitar que se copie fácilmente desde "Ver código fuente"
+        // Al decodificarlo, devuelve el token que ya generaste.
+        const encodedToken = "Z2l0aHViX3BhdF8xMUFXUUlQR0EweW1ydEFySUx6WmFxX3ZidHVGRUFaMWFtVk5IZnVoUU5JMWh0Nkd4Q2dCOWJ6NmZzdlhsbG0zdnJaTVZENUxCUnFpWU9qaDlt";
+        
+        // Decodificamos el token al iniciar
+        const ghToken = atob(encodedToken);
+
+        // Variables de estado
         let stockDataGlobal = [];
         let historyDataGlobal = [];
+        let itemCount = 0;
+        const MAX_ITEMS = 10;
+        const MIN_ITEMS = 1;
 
-        const configPanel = document.getElementById('configPanel');
-        const showConfigBtn = document.getElementById('showConfigBtn');
-        const saveConfigBtn = document.getElementById('saveConfigBtn');
+        // ==========================================
+        // 2. ELEMENTOS DEL DOM
+        // ==========================================
         const fechaInput = document.getElementById('fecha');
         const usuarioSelect = document.getElementById('usuario');
         const usoTextarea = document.getElementById('uso');
@@ -249,78 +271,8 @@
         const filterUserSelect = document.getElementById('filterUserSelect');
         const historyTableBody = document.getElementById('historyTableBody');
 
-        function updateGlobalConfig() {
-            ghUser = document.getElementById('ghUser').value.trim();
-            ghRepo = document.getElementById('ghRepo').value.trim();
-            ghPath = document.getElementById('ghPath').value.trim();
-            ghToken = document.getElementById('ghToken').value.trim();
-        }
-
-        function loadConfig() {
-            const saved = localStorage.getItem('energConfig');
-            if (saved) {
-                const config = JSON.parse(saved);
-                document.getElementById('ghUser').value = config.user || 'LEAVERA77';
-                document.getElementById('ghRepo').value = config.repo || 'MaterialesNoMatriculados';
-                document.getElementById('ghPath').value = config.path || 'listado_materiales_ENERSA.xlsx';
-                document.getElementById('ghToken').value = config.token || '';
-                
-                if (config.token && config.token.trim() !== '') {
-                    updateGlobalConfig();
-                    configPanel.classList.add('hidden');
-                    showConfigBtn.classList.remove('hidden');
-                }
-            } else {
-                configPanel.classList.remove('hidden');
-            }
-            updateGlobalConfig();
-        }
-
-        async function validarToken() {
-            if (!ghToken) { showToast('Por favor, ingrese el Token de GitHub.', true); return false; }
-            try {
-                const url = `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${ghPath}`;
-                const res = await fetch(url, { headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' } });
-                
-                if (res.status === 401) { showToast('Token inválido o expirado.', true); return false; }
-                if (res.status === 404) { showToast('Repositorio o archivo no encontrado.', true); return false; }
-                if (!res.ok) { showToast(`Error de conexión: ${res.statusText}`, true); return false; }
-                return true;
-            } catch (error) {
-                showToast('Error de red. Verifique su conexión o firewall.', true);
-                return false;
-            }
-        }
-
-        saveConfigBtn.addEventListener('click', async () => {
-            updateGlobalConfig();
-            const loaderDiv = document.createElement('div');
-            loaderDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validando token...';
-            loaderDiv.style.cssText = 'text-align:center; padding:1rem; font-weight:bold; color:#1f7b8c;';
-            saveConfigBtn.parentNode.appendChild(loaderDiv);
-            saveConfigBtn.disabled = true;
-
-            const esValido = await validarToken();
-            
-            loaderDiv.remove();
-            saveConfigBtn.disabled = false;
-
-            if (esValido) {
-                const config = { user: ghUser, repo: ghRepo, path: ghPath, token: ghToken };
-                localStorage.setItem('energConfig', JSON.stringify(config));
-                showToast('✅ Token validado y guardado.');
-                configPanel.classList.add('hidden');
-                showConfigBtn.classList.remove('hidden');
-            }
-        });
-
-        showConfigBtn.addEventListener('click', () => {
-            configPanel.classList.remove('hidden');
-            showConfigBtn.classList.add('hidden');
-        });
-
         // ==========================================
-        // 2. DATOS BASE
+        // 3. DATOS BASE
         // ==========================================
         const MATERIALES_RAW = [
             "Alambre de fardo | Fardo Negro Nº 16 | kg", "Alambre de fardo galvanizado | Fardo galvanizado Nº 16 | kg",
@@ -378,12 +330,8 @@
 
         const USUARIOS = ["MATEO, LUCAS", "ESTEBENET, JONATHAN", "GRIMALDI, GABRIEL", "LEHNER, DANILO", "MONZÓN, HUGO", "GIMENEZ, ROSENDO", "CIARROCA, ENZO", "CIARROCA, MANUEL", "ISAAC, LEANDRO", "ELZESAR, JUAN", "MILANICH, ALEJANDRO", "CIARROCA, MANUEL", "GRILLE, EMILIANO", "NARVAEZ, RAUL", "MAIER, FERNANDO", "ALBARENQUE, FERNANDO", "LARA, VALENTIN", "ECKERT, ENZO", "WEISHEIM, FABIAN", "TABORDA, SERGIO", "GOMEZ, ALEJANDRO", "OLGIATTI, DUILIO", "VERA, LEANDRO"];
 
-        let itemCount = 0;
-        const MAX_ITEMS = 10;
-        const MIN_ITEMS = 1;
-
         // ==========================================
-        // 3. FUNCIONES AUXILIARES
+        // 4. FUNCIONES AUXILIARES
         // ==========================================
         function showToast(msg, isError = false) {
             toastEl.textContent = msg;
@@ -478,7 +426,7 @@
         }
 
         function validateAndCollect() {
-            if (!ghToken) { showToast('Configure el Token de GitHub primero.', true); configPanel.classList.remove('hidden'); return null; }
+            if (!ghToken) { showToast('Error interno de configuración.', true); return null; }
             if (!fechaInput.value) { showToast('La fecha es obligatoria.', true); return null; }
             if (!usuarioSelect.value) { showToast('Seleccione un usuario.', true); return null; }
             if (!usoTextarea.value.trim()) { showToast('Describa el uso.', true); return null; }
@@ -510,7 +458,7 @@
         }
 
         // ==========================================
-        // 4. CONEXIÓN GITHUB (LEER/ESCRIBIR)
+        // 5. CONEXIÓN GITHUB
         // ==========================================
         async function downloadAndParseExcel() {
             const url = `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${ghPath}?t=${Date.now()}`;
@@ -551,7 +499,7 @@
         }
 
         // ==========================================
-        // 5. LÓGICA DE OPERACIONES (RETIRO/DEVOLUCIÓN)
+        // 6. OPERACIONES Y VISTAS
         // ==========================================
         async function procesarOperacion(operacion) {
             const datos = validateAndCollect();
@@ -569,7 +517,6 @@
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
-                // 1. Modificar Stock en la Hoja Principal
                 let modificados = 0;
                 let noEncontrados = [];
 
@@ -601,13 +548,11 @@
 
                 if (modificados === 0) throw new Error("Ningún material coincidió con la lista del Excel.");
 
-                // 2. Registrar en la Hoja de Historial
                 if (!workbook.SheetNames.includes('Historial')) {
                     const newWs = XLSX.utils.aoa_to_sheet([["Fecha", "Usuario", "Operacion", "Material", "Cantidad", "Uso"]]);
                     XLSX.utils.book_append_sheet(workbook, newWs, 'Historial');
                 }
-                const histSheetName = 'Historial';
-                const histWorksheet = workbook.Sheets[histSheetName];
+                const histWorksheet = workbook.Sheets['Historial'];
                 
                 const hoy = datos.fecha;
                 const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
@@ -616,10 +561,9 @@
                 datos.items.forEach(item => {
                     XLSX.utils.sheet_add_aoa(histWorksheet, [[
                         timestamp, datos.usuario, operacion.toUpperCase(), item.material, item.cantidad, datos.uso
-                    ]], { origin: -1 }); // origin -1 agrega al final
+                    ]], { origin: -1 });
                 });
 
-                // 3. Subir a GitHub
                 const commitMsg = `${operacion.toUpperCase()} - ${datos.usuario} - ${datos.fecha}`;
                 await updateExcelOnGitHub(workbook, sha, commitMsg);
 
@@ -645,11 +589,8 @@
             }
         }
 
-        // ==========================================
-        // 6. VER STOCK
-        // ==========================================
         async function mostrarStock() {
-            if (!ghToken) { showToast('Primero configure el Token.', true); configPanel.classList.remove('hidden'); return; }
+            if (!ghToken) { showToast('Error de configuración interna.', true); return; }
             stockModal.style.display = 'flex';
             stockTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
             stockSearchInput.value = '';
@@ -688,11 +629,8 @@
             }).join('');
         }
 
-        // ==========================================
-        // 7. VER HISTORIAL
-        // ==========================================
         async function mostrarHistorial() {
-            if (!ghToken) { showToast('Primero configure el Token.', true); configPanel.classList.remove('hidden'); return; }
+            if (!ghToken) { showToast('Error de configuración interna.', true); return; }
             historyModal.style.display = 'flex';
             historyTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</td></tr>';
             
@@ -709,7 +647,6 @@
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
                 historyDataGlobal = [];
-                // Empezar en 1 porque la fila 0 son los encabezados
                 for (let i = 1; i < json.length; i++) {
                     const row = json[i];
                     if (row && row[0]) {
@@ -724,7 +661,6 @@
                     }
                 }
 
-                // Llenar el combo de filtros
                 const usuariosUnicos = [...new Set(historyDataGlobal.map(item => item.usuario))].sort();
                 filterUserSelect.innerHTML = '<option value="">Todos los usuarios</option>' + 
                     usuariosUnicos.map(u => `<option value="${u}">${u}</option>`).join('');
@@ -740,7 +676,6 @@
                 historyTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay movimientos para este filtro.</td></tr>';
                 return;
             }
-            // Invertir para mostrar lo más reciente primero
             const reversedData = [...data].reverse();
             
             historyTableBody.innerHTML = reversedData.map(item => `
@@ -756,7 +691,7 @@
         }
 
         // ==========================================
-        // 8. FUNCIÓN DE IMPRESIÓN
+        // 7. IMPRESIÓN
         // ==========================================
         window.imprimirTabla = function(tablaId) {
             const tabla = document.getElementById(tablaId);
@@ -765,15 +700,12 @@
                 return;
             }
             
-            // Creamos un área temporal solo con la tabla para imprimir
             const printArea = document.createElement('div');
             printArea.id = 'printArea';
             
-            // Clonamos la tabla para no afectar la vista en pantalla
             const tablaClon = tabla.cloneNode(true);
             printArea.appendChild(tablaClon);
             
-            // Título de impresión
             const titulo = document.createElement('h2');
             titulo.style.textAlign = 'center';
             titulo.style.marginBottom = '20px';
@@ -782,20 +714,14 @@
             printArea.prepend(titulo);
 
             document.body.appendChild(printArea);
-            
-            // Ocultar todo excepto el area de impresión (el CSS @media print hace esto)
             window.print();
             
-            // Limpiar después de imprimir
-            setTimeout(() => {
-                printArea.remove();
-            }, 1000);
+            setTimeout(() => { printArea.remove(); }, 1000);
         };
 
         // ==========================================
-        // 9. INICIALIZACIÓN Y EVENTOS
+        // 8. INICIALIZACIÓN
         // ==========================================
-        loadConfig();
         fechaInput.value = new Date().toISOString().split('T')[0];
         
         USUARIOS.forEach(u => { 
