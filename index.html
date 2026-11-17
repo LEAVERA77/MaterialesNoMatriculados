@@ -38,6 +38,9 @@
         .btn-secondary { background: #e9f0f7; color: #1e3b57; }
         .btn-info { background: #17a2b8; color: white; }
         .btn-success { background: #1f7b5c; color: white; }
+        .btn-danger { background: #b33a3a; color: white; }
+        .btn-icon-small { background: #e9f0f7; border: none; border-radius: 8px; width: 30px; height: 30px; color: #0b2b4b; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem;}
+        .btn-icon-small:hover { background: #d6e0ea; }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .toast { position: fixed; bottom: 30px; right: 30px; background: #1e3b4f; color: white; padding: 1rem 1.8rem; border-radius: 50px; font-weight: 500; opacity: 0; transition: 0.25s; z-index: 9999; }
         .toast.show { opacity: 1; }
@@ -60,9 +63,22 @@
         .table-stock tr:hover { background: #f9fcff; }
         .stock-cero { color: #c42d2d; font-weight: bold; }
         .stock-bajo { color: #b4691f; font-weight: bold; }
+        
+        /* Estilo para marcar en negrita los retiros en el historial */
+        .row-retiro { font-weight: 600; color: #0b2b4b; }
+        .row-devolucion { color: #5e7e99; }
+
         .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 1rem; background: #f8fafc; border-radius: 0 0 20px 20px; }
         
         .table-responsive { overflow-x: auto; width: 100%; }
+
+        /* Estilos para el comprobante */
+        .receipt { background: #fff; border: 2px dashed #cbdae6; padding: 1.5rem; border-radius: 12px; max-width: 400px; margin: 0 auto; font-family: monospace; color: #000; }
+        .receipt h3 { text-align: center; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
+        .receipt p { margin-bottom: 5px; font-size: 0.9rem; }
+        .receipt-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        .receipt-table th, .receipt-table td { border-bottom: 1px solid #ddd; padding: 4px; text-align: left; }
+        .receipt-footer { text-align: center; margin-top: 15px; font-size: 0.8rem; color: #666; }
 
         @media (max-width: 768px) {
             body { padding: 0.5rem; }
@@ -96,6 +112,7 @@
             .modal-content { box-shadow: none; max-height: none; max-width: none; border-radius: 0; height: auto; }
             .modal-header, .modal-search, .modal-footer { display: none !important; }
             .modal-body { overflow: visible; padding: 0; }
+            .receipt { border: none; margin: 0; max-width: 100%; }
             @page { size: A4; margin: 1.5cm; }
         }
     </style>
@@ -103,7 +120,7 @@
 <body>
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 3px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.8rem;">
-        <h1 style="border: none; margin: 0; padding: 0;"><i class="fas fa-clipboard-list"></i> Gestión de Materiales y herramientas - ENERSA MARÍA GRANDE</h1>
+        <h1 style="border: none; margin: 0; padding: 0;"><i class="fas fa-clipboard-list"></i> Gestión de Materiales - ENERSA</h1>
     </div>
 
     <div class="form-grid">
@@ -167,6 +184,7 @@
             </table>
         </div>
         <div class="modal-footer">
+            <button type="button" class="btn btn-success" onclick="exportarTablaExcel('stockTable', 'Reporte_de_Stock')"><i class="fas fa-file-excel"></i> Exportar a Excel</button>
             <button type="button" class="btn btn-primary" onclick="imprimirTabla('stockTable')"><i class="fas fa-print"></i> Imprimir</button>
         </div>
     </div>
@@ -194,13 +212,33 @@
                         <th>Material</th>
                         <th>Cantidad</th>
                         <th>Uso</th>
+                        <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody"></tbody>
             </table>
         </div>
         <div class="modal-footer">
+            <button type="button" class="btn btn-success" onclick="exportarTablaExcel('historyTable', 'Historial_de_Movimientos')"><i class="fas fa-file-excel"></i> Exportar a Excel</button>
             <button type="button" class="btn btn-primary" onclick="imprimirTabla('historyTable')"><i class="fas fa-print"></i> Imprimir Tabla</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Comprobante -->
+<div class="modal-overlay" id="receiptModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-receipt"></i> Comprobante</h2>
+            <button type="button" onclick="document.getElementById('receiptModal').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body" style="background: #f4f7fc;" id="printAreaReceipt">
+            <div class="receipt" id="receiptContent">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="imprimirComprobante()"><i class="fas fa-print"></i> Imprimir Ticket</button>
         </div>
     </div>
 </div>
@@ -248,6 +286,9 @@
         const closeHistoryBtn = document.getElementById('closeHistoryBtn');
         const filterUserSelect = document.getElementById('filterUserSelect');
         const historyTableBody = document.getElementById('historyTableBody');
+
+        const receiptModal = document.getElementById('receiptModal');
+        const receiptContent = document.getElementById('receiptContent');
 
         const MATERIALES_RAW = [
             "Alambre de fardo | Fardo Negro Nº 16 | kg", "Alambre de fardo galvanizado | Fardo galvanizado Nº 16 | kg",
@@ -437,6 +478,57 @@
             return { workbook };
         }
 
+        // NUEVA FUNCIÓN: Mostrar Comprobante
+        function mostrarComprobante(datos, operacion) {
+            const fechaHora = new Date().toLocaleString('es-AR');
+            let tablaHTML = '';
+            
+            datos.items.forEach(i => {
+                tablaHTML += `
+                    <tr>
+                        <td>${i.material}</td>
+                        <td style="text-align: center;">${i.cantidad}</td>
+                        <td>${i.unidad || 'u.'}</td>
+                    </tr>
+                `;
+            });
+
+            receiptContent.innerHTML = `
+                <h3>ENERSA</h3>
+                <p><strong>Fecha:</strong> ${fechaHora}</p>
+                <p><strong>Usuario:</strong> ${datos.usuario}</p>
+                <p><strong>Operación:</strong> ${operacion.toUpperCase()}</p>
+                <p><strong>Uso:</strong> ${datos.uso}</p>
+                <table class="receipt-table">
+                    <thead>
+                        <tr>
+                            <th>Material</th>
+                            <th style="text-align: center;">Cant.</th>
+                            <th>Unidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tablaHTML}
+                    </tbody>
+                </table>
+                <div class="receipt-footer">
+                    <p>Firma del responsable: ____________________</p>
+                    <p>Comprobante generado automáticamente</p>
+                </div>
+            `;
+            
+            receiptModal.style.display = 'flex';
+        }
+
+        window.imprimirComprobante = function() {
+            const printArea = document.createElement('div');
+            printArea.id = 'printArea';
+            printArea.innerHTML = receiptContent.outerHTML;
+            document.body.appendChild(printArea);
+            window.print();
+            setTimeout(() => { printArea.remove(); }, 1000);
+        };
+
         async function procesarOperacion(operacion) {
             const datos = validateAndCollect();
             if (!datos) return;
@@ -456,7 +548,6 @@
                     items: datos.items
                 };
 
-                // Usamos urlGoogle con text/plain para evitar CORS
                 const res = await fetch(urlGoogle, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
@@ -465,8 +556,11 @@
 
                 if (!res.ok) throw new Error("Error al conectar con Google.");
 
-                showToast(`✅ ${operacion.toUpperCase()} enviado. GitHub está actualizando el archivo (tarda 20 seg).`);
+                showToast(`✅ ${operacion.toUpperCase()} enviado.`);
                 
+                // Mostramos el comprobante de Retiro/Devolución
+                mostrarComprobante(datos, operacion);
+
                 usoTextarea.value = '';
                 itemsContainer.innerHTML = '';
                 createItemRow();
@@ -481,6 +575,39 @@
                 devolucionBtn.disabled = false;
                 modeBadge.textContent = 'Modo: Esperando acción';
                 modeBadge.style.background = '#d4e6f0';
+            }
+        }
+
+        // NUEVA FUNCIÓN: Devolución Rápida desde el historial
+        window.devolucionRapida = async function(usuario, material, cantidad, uso) {
+            if(!confirm(`¿Está seguro que desea devolver ${cantidad} unidad/es de "${material}" al stock?`)) return;
+            
+            const hoy = new Date().toISOString().split('T')[0];
+            const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            
+            const payloadHTML = {
+                fecha: hoy + ' ' + hora,
+                usuario: usuario,
+                operacion: 'devolucion',
+                uso: `Devolución rápida de: ${uso}`,
+                items: [{
+                    material: material,
+                    cantidad: parseFloat(cantidad),
+                    unidad: ''
+                }]
+            };
+
+            try {
+                showToast("Procesando devolución rápida...");
+                const res = await fetch(urlGoogle, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payloadHTML)
+                });
+                if(!res.ok) throw new Error("Error al conectar con Google.");
+                showToast("✅ Devolución registrada. Espere 20 segundos para ver el stock actualizado.");
+            } catch(e) {
+                showToast(e.message, true);
             }
         }
 
@@ -525,13 +652,13 @@
 
         async function mostrarHistorial() {
             historyModal.style.display = 'flex';
-            historyTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</td></tr>';
+            historyTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</td></tr>';
             
             try {
                 const { workbook } = await downloadAndParseExcel();
                 
                 if (!workbook.SheetNames.includes('Historial')) {
-                    historyTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay historial registrado aún.</td></tr>';
+                    historyTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No hay historial registrado aún.</td></tr>';
                     filterUserSelect.innerHTML = '<option value="">Todos los usuarios</option>';
                     return;
                 }
@@ -560,27 +687,41 @@
 
                 renderHistoryTable(historyDataGlobal);
             } catch (error) {
-                historyTableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#c42d2d;">Error: ${error.message}</td></tr>`;
+                historyTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#c42d2d;">Error: ${error.message}</td></tr>`;
             }
         }
 
         function renderHistoryTable(data) {
             if (data.length === 0) {
-                historyTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay movimientos para este filtro.</td></tr>';
+                historyTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No hay movimientos para este filtro.</td></tr>';
                 return;
             }
             const reversedData = [...data].reverse();
             
-            historyTableBody.innerHTML = reversedData.map(item => `
-                <tr>
-                    <td>${item.fecha}</td>
-                    <td>${item.usuario}</td>
-                    <td style="font-weight:bold; color:${item.operacion === 'RETIRO' ? '#b33a3a' : '#1f7b5c'}">${item.operacion}</td>
-                    <td>${item.material}</td>
-                    <td>${item.cantidad}</td>
-                    <td>${item.uso}</td>
-                </tr>
-            `).join('');
+            historyTableBody.innerHTML = reversedData.map(item => {
+                // Negrita condicional: si es RETIRO, la fila se marca más fuerte
+                let rowClass = item.operacion === 'RETIRO' ? 'row-retiro' : 'row-devolucion';
+                let colorOp = item.operacion === 'RETIRO' ? '#b33a3a' : '#1f7b5c';
+                
+                // Generar botón de devolución rápida si fue un retiro
+                let botonAccion = '';
+                if (item.operacion === 'RETIRO') {
+                    // Usamos comillas simples para escapar los strings en el onclick
+                    botonAccion = `<button class="btn-icon-small" title="Devolver este material" onclick="devolucionRapida('${item.usuario.replace(/'/g, "\\'")}', '${item.material.replace(/'/g, "\\'")}', ${item.cantidad}, '${item.uso.replace(/'/g, "\\'")}')"><i class="fas fa-undo"></i></button>`;
+                }
+
+                return `
+                    <tr class="${rowClass}">
+                        <td>${item.fecha}</td>
+                        <td>${item.usuario}</td>
+                        <td style="color:${colorOp}">${item.operacion}</td>
+                        <td>${item.material}</td>
+                        <td>${item.cantidad}</td>
+                        <td>${item.uso}</td>
+                        <td>${botonAccion}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         window.imprimirTabla = function(tablaId) {
@@ -589,6 +730,15 @@
             const printArea = document.createElement('div');
             printArea.id = 'printArea';
             const tablaClon = tabla.cloneNode(true);
+            
+            // Ocultar la columna de acción al imprimir
+            if (tablaId === 'historyTable') {
+                const rows = tablaClon.querySelectorAll('tr');
+                rows.forEach(row => {
+                    if(row.cells.length > 6) row.deleteCell(-1);
+                });
+            }
+
             printArea.appendChild(tablaClon);
             const titulo = document.createElement('h2');
             titulo.style.textAlign = 'center';
@@ -599,6 +749,28 @@
             document.body.appendChild(printArea);
             window.print();
             setTimeout(() => { printArea.remove(); }, 1000);
+        };
+
+        // NUEVA FUNCIÓN: Exportar a Excel
+        window.exportarTablaExcel = function(tablaId, nombreArchivo) {
+            const tabla = document.getElementById(tablaId);
+            if (!tabla || tabla.rows.length <= 1) { alert("No hay datos para exportar."); return; }
+            
+            // Clonamos la tabla para manipularla sin afectar la vista
+            const tablaClon = tabla.cloneNode(true);
+            
+            // Si es la tabla del historial, quitamos la columna de Acciones
+            if (tablaId === 'historyTable') {
+                const rows = tablaClon.querySelectorAll('tr');
+                rows.forEach(row => {
+                    if(row.cells.length > 6) row.deleteCell(-1);
+                });
+            }
+
+            // Convertimos la tabla HTML a un libro de Excel
+            const wb = XLSX.utils.table_to_book(tablaClon, {sheet: "Datos"});
+            const fecha = new Date().toISOString().slice(0,10);
+            XLSX.writeFile(wb, `${nombreArchivo}_${fecha}.xlsx`);
         };
 
         // INICIALIZACIÓN
