@@ -211,14 +211,14 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // ==========================================
-        // 1. CONFIGURACIÓN DEL TOKEN DE DISPARO
+        // 1. CONFIGURACIÓN
         // ==========================================
         const ghUser = "LEAVERA77";
         const ghRepo = "MaterialesNoMatriculados";
         const ghPath = "listado_materiales_ENERSA.xlsx";
         
-        // PEGA AQUÍ EL TOKEN CLASSIC NUEVO (con permiso 'workflow')
-        const TOKEN_DISPARO = "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";
+        // URL de tu Cloudflare Worker
+        const urlWorker = "https://wandering-mud-fcc0.leavera77.workers.dev/";
         
         let stockDataGlobal = [];
         let historyDataGlobal = [];
@@ -449,18 +449,10 @@
             modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
 
             try {
-                // Usamos AllOrigins como proxy para evitar el bloqueo CORS del navegador
-                const proxyUrl = "https://api.allorigins.win/raw?url=";
-                const githubUrl = `https://api.github.com/repos/${ghUser}/${ghRepo}/actions/dispatches`;
-                const url = proxyUrl + encodeURIComponent(githubUrl);
-
-                const res = await fetch(url, {
+                // Usamos la URL de Cloudflare Worker
+                const res = await fetch(urlWorker, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${TOKEN_DISPARO}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         event_type: 'actualizar_stock',
                         client_payload: {
@@ -473,11 +465,7 @@
                     })
                 });
 
-                if (!res.ok) {
-                    if(res.status === 401) throw new Error("El Token de Disparo no tiene los permisos correctos.");
-                    if(res.status === 404) throw new Error("No se encontró el repositorio o el workflow.");
-                    throw new Error("Error al enviar la orden a GitHub.");
-                }
+                if (!res.ok) throw new Error("Error al enviar la orden. Verifique su Worker.");
 
                 showToast(`✅ ${operacion.toUpperCase()} enviado. GitHub está actualizando el archivo (tarda 20 seg).`);
                 
