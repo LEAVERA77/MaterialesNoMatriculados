@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ENERSA · Gestión de Materiales</title>
+    <!-- Librerías externas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f4f7fc; padding: 1.5rem; color: #1e2b3a; }
@@ -209,14 +211,11 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // ==========================================
-        // 1. CONFIGURACIÓN DEL TOKEN DE DISPARO
+        // 1. CONFIGURACIÓN
         // ==========================================
         const ghUser = "LEAVERA77";
         const ghRepo = "MaterialesNoMatriculados";
         const ghPath = "listado_materiales_ENERSA.xlsx";
-        
-        // PEGA AQUÍ EL TOKEN CLASSIC NUEVO (con permiso 'workflow')
-        const TOKEN_DISPARO = "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";
         
         let stockDataGlobal = [];
         let historyDataGlobal = [];
@@ -248,6 +247,9 @@
         const filterUserSelect = document.getElementById('filterUserSelect');
         const historyTableBody = document.getElementById('historyTableBody');
 
+        // ==========================================
+        // 2. DATOS BASE
+        // ==========================================
         const MATERIALES_RAW = [
             "Alambre de fardo | Fardo Negro Nº 16 | kg", "Alambre de fardo galvanizado | Fardo galvanizado Nº 16 | kg",
             "Arco para hoja sierra | Arco Sierra Manual Profesional 300 Mm Con Hoja 12\" | pieza", "Balde de plástico albañil | | piezas",
@@ -447,31 +449,21 @@
             modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
 
             try {
-                // URL CORREGIDA: /actions/dispatches
-                const res = await fetch(`https://api.github.com/repos/${ghUser}/${ghRepo}/actions/dispatches`, {
+                // PEGA AQUÍ LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT
+                const urlGoogle = "https://script.google.com/macros/s/AKfycbzTUxRc_vcQogoej3ULwHHQPBDeEQYuw6hgnJtxqusbCzuVnJVXnpbM_ABXZb6UED1o/exec";
+
+                const res = await fetch(urlGoogle, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${TOKEN_DISPARO}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
                     body: JSON.stringify({
-                        event_type: 'actualizar_stock',
-                        client_payload: {
-                            operacion: operacion,
-                            fecha: datos.fecha + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-                            usuario: datos.usuario,
-                            uso: datos.uso,
-                            items: datos.items
-                        }
+                        operacion: operacion,
+                        fecha: datos.fecha + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+                        usuario: datos.usuario,
+                        uso: datos.uso,
+                        items: datos.items
                     })
                 });
 
-                if (!res.ok) {
-                    if(res.status === 401) throw new Error("El Token de Disparo no tiene los permisos correctos. Debe tener el permiso 'workflow'.");
-                    if(res.status === 404) throw new Error("No se encontró el repositorio o el workflow no existe. Verifique que el archivo .github/workflows/actualizar.yml esté creado.");
-                    throw new Error("Error al enviar la orden a GitHub.");
-                }
+                if (!res.ok) throw new Error("Error al conectar con el puente de Google.");
 
                 showToast(`✅ ${operacion.toUpperCase()} enviado. GitHub está actualizando el archivo.`);
                 
