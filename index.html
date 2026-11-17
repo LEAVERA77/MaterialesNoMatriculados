@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENERSA · Gestión de Materiales</title>
+    <!-- Librería SheetJS para manejar Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f4f7fc; padding: 1.5rem; color: #1e2b3a; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 28px; box-shadow: 0 15px 35px rgba(0, 20, 30, 0.12); padding: 2rem; }
+        h1 { font-size: 1.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; border-bottom: 3px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.8rem; color: #0b2b4b; }
+        h1 i { color: #1f7b8c; }
+        .config-panel { background: #fff3cd; border: 1px solid #ffe69c; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; }
+        .config-panel h3 { margin-bottom: 1rem; color: #664d03; display: flex; align-items: center; gap: 0.5rem; }
+        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem; margin-bottom: 1.5rem; }
+        .field-group { display: flex; flex-direction: column; gap: 0.45rem; }
+        .field-group label { font-weight: 600; font-size: 0.9rem; text-transform: uppercase; color: #2c4b66; }
+        input, select, textarea { width: 100%; padding: 0.8rem 1rem; border: 1.5px solid #d6e0ea; border-radius: 16px; font-size: 0.95rem; font-family: inherit; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #1f7b8c; box-shadow: 0 0 0 4px rgba(31, 123, 140, 0.12); }
+        .items-section { background: #f9fcff; border-radius: 22px; padding: 1.6rem; margin: 2rem 0; border: 1px solid #dde7f0; }
+        .item-row { display: flex; gap: 0.8rem; align-items: flex-start; margin-bottom: 1rem; background: white; padding: 0.8rem; border-radius: 20px; border: 1px solid #e3ecf3; position: relative; }
+        .material-col { flex: 3; position: relative; }
+        .qty-col { flex: 1; }
+        .action-col { display: flex; align-items: center; justify-content: center; flex: 0 0 40px; }
+        .btn-icon { background: #fff1f0; border: none; border-radius: 12px; width: 40px; height: 40px; color: #b33a3a; cursor: pointer; }
+        .btn-icon:hover { background: #ffe0dd; }
+        .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1.5px solid #cbdae6; border-radius: 16px; max-height: 220px; overflow-y: auto; z-index: 1000; display: none; margin-top: 4px; box-shadow: 0 12px 28px rgba(0,0,0,0.12); }
+        .suggestions-box div { padding: 0.7rem 1rem; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #edf2f7; }
+        .suggestions-box div:hover { background: #e2f0f5; }
+        .button-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.8rem; }
+        .btn-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn { border: none; padding: 0.9rem 2rem; border-radius: 50px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; transition: 0.15s; }
+        .btn-primary { background: #0b2b4b; color: white; }
+        .btn-primary:hover { background: #123b63; }
+        .btn-warning { background: #b4691f; color: white; }
+        .btn-secondary { background: #e9f0f7; color: #1e3b57; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .toast { position: fixed; bottom: 30px; right: 30px; background: #1e3b4f; color: white; padding: 1rem 1.8rem; border-radius: 50px; font-weight: 500; opacity: 0; transition: 0.25s; z-index: 9999; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .toast.show { opacity: 1; }
+        .toast.error { background: #b33a3a; }
+        .required:after { content: " *"; color: #c42d2d; }
+        .loader { display: none; text-align: center; padding: 1rem; font-weight: 600; color: #1f7b8c; font-size: 1.1rem; }
+        .error-shake { animation: shake 0.2s ease-in-out; border-color: #c42d2d !important; }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } 100% { transform: translateX(0); } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1><i class="fas fa-clipboard-list"></i> Gestión de Materiales - ENERSA</h1>
+
+    <!-- Panel de Configuración de GitHub -->
+    <div class="config-panel">
+        <h3><i class="fab fa-github"></i> Configuración del Repositorio (Solo llenar la primera vez)</h3>
+        <div class="config-grid">
+            <div class="field-group">
+                <label>Usuario / Organización</label>
+                <input type="text" id="ghUser" placeholder="Ej: LEAVERA77" value="ENERSA MARIA GRANDE">
+            </div>
+            <div class="field-group">
+                <label>Nombre del Repositorio</label>
+                <input type="text" id="ghRepo" placeholder="Ej: MaterialesNoMatriculados" value="MaterialesNoMatriculados">
+            </div>
+            <div class="field-group">
+                <label>Ruta del Archivo</label>
+                <input type="text" id="ghPath" value="listado_materiales_ENERSA.xlsx">
+            </div>
+            <div class="field-group">
+                <label>Token de GitHub (Fine-grained)</label>
+                <input type="password" id="ghToken" placeholder="github_pat_...">
+            </div>
+        </div>
+        <button type="button" id="saveConfigBtn" class="btn btn-secondary" style="margin-top: 1rem; font-size: 0.9rem; padding: 0.6rem 1.5rem;"><i class="fas fa-save"></i> Guardar Configuración</button>
+    </div>
+
+    <div class="form-grid">
+        <div class="field-group">
+            <label for="fecha">Fecha <span class="required"></span></label>
+            <input type="date" id="fecha" required>
+        </div>
+        <div class="field-group">
+            <label for="usuario">Usuario <span class="required"></span></label>
+            <select id="usuario" required>
+                <option value="">— Seleccionar —</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="field-group" style="margin-bottom: 1.2rem;">
+        <label for="uso">Uso / destino <span class="required"></span></label>
+        <textarea id="uso" placeholder="Describa el uso que se le dará al material..." required></textarea>
+    </div>
+
+    <div class="items-section">
+        <h2><i class="fas fa-tools"></i> Materiales a mover</h2>
+        <div id="itemsContainer"></div>
+        <button type="button" id="addItemBtn" class="btn btn-secondary" style="margin-top: 0.8rem; font-size: 0.9rem; padding: 0.6rem 1.2rem;"><i class="fas fa-plus-circle"></i> Añadir otro material</button>
+    </div>
+
+    <div class="button-bar">
+        <div id="modeBadge" style="font-weight: 600; padding: 0.5rem 1.5rem; background: #d4e6f0; border-radius: 40px;">Modo: Esperando acción</div>
+        <div class="btn-group">
+            <button type="button" id="retiroBtn" class="btn btn-primary"><i class="fas fa-arrow-down"></i> Grabar retiro</button>
+            <button type="button" id="devolucionBtn" class="btn btn-warning"><i class="fas fa-arrow-up"></i> Grabar devolución</button>
+            <button type="button" id="resetBtn" class="btn btn-secondary"><i class="fas fa-undo-alt"></i> Limpiar</button>
+        </div>
+    </div>
+    <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Conectando con GitHub y actualizando Excel...</div>
+</div>
+
+<div id="toast" class="toast">Mensaje</div>
+
+<script>
+    (function(){
+        // ============================================================
+        // 1. DATOS (Materiales y Usuarios)
+        // ============================================================
+        const MATERIALES_RAW = [
+            "Alambre de fardo | Fardo Negro Nº 16 | kg", "Alambre de fardo galvanizado | Fardo galvanizado Nº 16 | kg",
+            "Arco para hoja sierra | Arco Sierra Manual Profesional 300 Mm Con Hoja 12\" | pieza", "Balde de plástico albañil | | piezas",
+            "Batería 9 V | Batería alcalina 9 V | piezas", "Broca de anclaje para Hormigón | Perno de expansión a golpe de 12x120 mm caja x 10 unidades | Caja",
+            "Bulón  alta resistencia 7/16\"x1 3/4\" | Con tuerca, 2 arandelas planas y una de presión | Conjunto", "Bulón alta resistencia | 3/8\" x 2\". Con tuerca, 2 arandelas planas y una de presión. | conjunto",
+            "Bulón alta resistencia 1/2\"x2\" 12hilos/pulg | Con tuerca, 2 arandelas planas y una de presión | Conjunto", "Caja de herramientas | Chapa galvanizada 420*210*210 mm | piezas",
+            "Cinta autosoldable | 19mm x 5m x 0,76mm | pieza", "Cinta de peligro | Cinta \"PELIGRO\" roja y blanca- Ancho 8cm-Largo 200m | pieza",
+            "Cinta métrica con freno 5 mts - 19mm | | piezas", "Corta Hierro | 300 x 35mm | piezas",
+            "Destornillador Philips aislado | PH2x100mm | piezas", "Destornillador Plano aislado | 6,5x150 mm | piezas",
+            "Disco de corte metales | 350x3,0x25,4 mm | piezas", "Disco de corte metales | 180x1,6x22,23mm(13000 rpm) | piezas",
+            "Disco de corte Widia diamantado | 180mm segmentado | piezas", "Disco de desbaste | 114x6mm | piezas",
+            "Disco de desbaste | 180*6*22,23mm | piezas", "Electrodo para soldadora | Punta azul de 2,5mm | Kilos",
+            "Electrodo para soldadora | Punta azul de 3,25mm | Kilos", "Escobillón sin cabo | | piezas",
+            "Espuma de Poliuretano expandido | Aerosol de 300ml | piezas", "Grillete corazón 5/8\" | Grillete tipo corazón para eslingas 5/8\" 3 Tn | pieza",
+            "Hoja/filo para cutter | Repuesto para cutters cuchilla trapezoidal caja x 10 unidades | caja", "Lampara Led 150W | Lampara Led potencia 100W, rosca E40 | pieza",
+            "Lima afilado de cadenas motosierras | Lima afilado cadena motosierras 3/16\" | pieza", "Lima afilado de cadenas motosierras | Lima afilado cadena motosierras 7/32\" | pieza",
+            "Lima afilado de cadenas motosierras | Lima afilado cadena motosierras 5/32\" | pieza", "Llave ajustable tipo \"Francesa\" | Llave ajustable 8\" | piezas",
+            "Llave combina criquet 13mm | Llave combinada crique 13mm-No articulada | pieza", "Llave combinada | 13mm | piezas",
+            "Llave combinada | 14mm | piezas", "Llave combinada | 17mm | piezas",
+            "Llave combinada | 19mm | piezas", "Martillo de pena | 400gr mango de madera | piezas",
+            "Mascara para soldar | Fotosensible con regulacion de sensibilidad | pieza", "Mecha acero Rapido 10mm | | piezas",
+            "Mecha acero Rapido 12mm | | piezas", "Mecha acero rápido 13mm | | piezas",
+            "Mecha acero rápido 4mm | | piezas", "Mecha acero rápido 5mm | | piezas",
+            "Mecha acero Rapido 6mm | | piezas", "Mecha acero Rapido 8mm | | piezas",
+            "Mecha acero rápido 9,75mm | | piezas", "Mecha p/madera de taladro explosión | Encastre Hexagonal, diámetro 19mm, largo 250mm | pieza",
+            "Mecha widia - 12mm | 12x160mm | piezas", "Mecha widia - 14mm | 14x160mm | piezas",
+            "Mecha widia - 6mm | 6x100mm | piezas", "Mecha widia - 8mm | 8x120mm | piezas",
+            "Mecha widia -10mm | 10x160mm | piezas", "Palo de madera - con rosca | Para escobillón | piezas",
+            "Pilas AA 1,5 V | Pilas 1,5 V | piezas", "Pilas AAA 1,5 V | Pilas 1,5 V | piezas",
+            "Pilas D | Pilas 1,5 V | piezas", "Pintura en aerosol | 3 en 1 Color Gris espacial 440ml | pieza",
+            "Pintura en Aerosol | 240 cm3 Color Rojo | pieza", "Pinza alicate corte diagonal aislada para 1,1 kV | 6 pulgadas | piezas",
+            "Pinza pico de loro | Pico de loro 250mm mango anatómico | piezas", "Pinza punta plana aislada para 1,1 kV | 6 pulgadas 160mm | piezas",
+            "Pinza universal aislada para 1,1 kV | 8 pulgadas | piezas", "Producto multiuso, destraba/limpia/afloja piezas (tipo WD-40) | Aerosol 155G/216 cm3 | piezas",
+            "Punta Philips para atornillador | punta doble Bosch PH2 x 65mm alto impacto kit x 8 unidades | piezas", "Set llave ALEN | Set allen hexagonal cardanicas 9 pieza-medidas 10-8-6-5-4-3-2,5-2-1,5 | kit",
+            "Set llave TORK | Set llaves tork 9 pieza -Medias T50-45-40-30-27-25-20-15-10 | kit", "Soplete p/cartucho de gas | Soplete para cartucho gas Butano/Propano C/encendido electrónico | pieza",
+            "Talco Industrial Para Gomería Neumáticos | x kg | pieza", "Tarugo para pared | Plastico de 6 mm  caja x 100 unidades | caja",
+            "Tarugo para pared | Plastico de 8 mm  caja x 500 unidades | caja", "Tirafondo cabeza hexagonal | Tirafondo Hexagonal Zincado 5/16x8\" | pieza",
+            "Tornillo autoperforante corto | T1 mecha 8x1/2\", cabeza philip | piezas", "Tornillo autoperforante largo | T1 mecha 8x3/4\", cabeza philip | piezas",
+            "Tornillo FIX | Tirafondo tipo Fix 6x3/4 | pieza", "Tornillo tanque | 1/4 pulg x 3/4pulg | piezas",
+            "Tornillo tirafondo | Cabeza Phillips, 6 mm x 1\" caja x 100 unidades | piezas", "Tornillo tirafondo | Cabeza Phillips, 8 mm x 1 1/2\" caja x 500 unidades | piezas",
+            "Tornillo tirafondo | Cabeza Phillips, 8 mm x 1 3/4\" caja x 500 unidades | Caja"
+        ];
+
+        const MATERIALES = MATERIALES_RAW.map(line => {
+            const parts = line.split('|').map(s => s.trim());
+            return { nombre: parts[0] || '—', especificacion: parts[1] || '', unidad: parts[2] || 'u.', display: `${parts[0]} ${parts[1] ? '· ' + parts[1] : ''} (${parts[2]})` };
+        });
+
+        const USUARIOS = ["MATEO, LUCAS", "ESTEBENET, JONATHAN", "GRIMALDI, GABRIEL", "LEHNER, DANILO", "MONZÓN, HUGO", "GIMENEZ, ROSENDO", "CIARROCA, ENZO", "CIARROCA, MANUEL", "ISAAC, LEANDRO", "ELZESAR, JUAN", "MILANICH, ALEJANDRO", "CIARROCA, MANUEL", "GRILLE, EMILIANO", "NARVAEZ, RAUL", "MAIER, FERNANDO", "ALBARENQUE, FERNANDO", "LARA, VALENTIN", "ECKERT, ENZO", "WEISHEIM, FABIAN", "TABORDA, SERGIO", "GOMEZ, ALEJANDRO", "OLGIATTI, DUILIO", "VERA, LEANDRO"];
+
+        // ============================================================
+        // 2. ESTADO Y ELEMENTOS DEL DOM
+        // ============================================================
+        let itemCount = 0;
+        const MAX_ITEMS = 10;
+        const MIN_ITEMS = 1;
+
+        const fechaInput = document.getElementById('fecha');
+        const usuarioSelect = document.getElementById('usuario');
+        const usoTextarea = document.getElementById('uso');
+        const itemsContainer = document.getElementById('itemsContainer');
+        const addItemBtn = document.getElementById('addItemBtn');
+        const retiroBtn = document.getElementById('retiroBtn');
+        const devolucionBtn = document.getElementById('devolucionBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const modeBadge = document.getElementById('modeBadge');
+        const toastEl = document.getElementById('toast');
+        const loader = document.getElementById('loader');
+        
+        const ghUser = document.getElementById('ghUser');
+        const ghRepo = document.getElementById('ghRepo');
+        const ghPath = document.getElementById('ghPath');
+        const ghToken = document.getElementById('ghToken');
+        const saveConfigBtn = document.getElementById('saveConfigBtn');
+
+        if (localStorage.getItem('ghConfig')) {
+            const conf = JSON.parse(localStorage.getItem('ghConfig'));
+            ghUser.value = conf.user || 'LEAVERA77';
+            ghRepo.value = conf.repo || 'MaterialesNoMatriculados';
+            ghPath.value = conf.path || 'listado_materiales_ENERSA.xlsx';
+            ghToken.value = conf.token || '';
+        }
+
+        saveConfigBtn.addEventListener('click', () => {
+            const conf = { user: ghUser.value.trim(), repo: ghRepo.value.trim(), path: ghPath.value.trim(), token: ghToken.value.trim() };
+            localStorage.setItem('ghConfig', JSON.stringify(conf));
+            showToast('Configuración guardada localmente.');
+        });
+
+        // ============================================================
+        // 3. FUNCIONES AUXILIARES
+        // ============================================================
+        function showToast(msg, isError = false) {
+            toastEl.textContent = msg;
+            toastEl.className = `toast show ${isError ? 'error' : ''}`;
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 4000);
+        }
+
+        function levenshtein(a, b) {
+            const matrix = [];
+            for (let i = 0; i <= a.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= a.length; i++) {
+                for (let j = 1; j <= b.length; j++) {
+                    matrix[i][j] = Math.min(matrix[i-1][j] + 1, matrix[i][j-1] + 1, matrix[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+                }
+            }
+            return matrix[a.length][b.length];
+        }
+
+        function buscarMateriales(query, maxResults = 8) {
+            if (!query || query.trim() === '') return [];
+            const q = query.toLowerCase().trim();
+            const scored = MATERIALES.map(m => {
+                const target = (m.nombre + ' ' + m.especificacion).toLowerCase();
+                return { material: m, score: levenshtein(q, target), targetLength: target.length };
+            });
+            scored.sort((a, b) => (a.score / Math.max(1, a.targetLength)) - (b.score / Math.max(1, b.targetLength)));
+            return scored.filter(s => s.score <= Math.max(3, Math.floor(q.length * 0.6))).slice(0, maxResults).map(s => s.material);
+        }
+
+        // ============================================================
+        // 4. GESTIÓN DE FILAS
+        // ============================================================
+        function createItemRow() {
+            const rowId = `item-${itemCount}`;
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'item-row';
+            rowDiv.id = rowId;
+            rowDiv.innerHTML = `
+                <div class="material-col">
+                    <input type="text" class="material-input" placeholder="Buscar material (ej: mecha 10)..." autocomplete="off">
+                    <div class="suggestions-box" id="sug-${rowId}"></div>
+                    <input type="hidden" class="material-hidden" value="">
+                </div>
+                <div class="qty-col"><input type="number" class="qty-input" placeholder="Cant." min="0.01" step="0.01" value=""></div>
+                <div class="action-col"><button type="button" class="btn-icon remove-item"><i class="fas fa-trash-alt"></i></button></div>
+            `;
+            itemsContainer.appendChild(rowDiv);
+            itemCount++;
+
+            const materialInput = rowDiv.querySelector('.material-input');
+            const hiddenInput = rowDiv.querySelector('.material-hidden');
+            const suggestionsBox = rowDiv.querySelector('.suggestions-box');
+
+            materialInput.addEventListener('input', function(e) {
+                const query = e.target.value;
+                if (query.trim().length < 2) { suggestionsBox.style.display = 'none'; hiddenInput.value = ''; return; }
+                const resultados = buscarMateriales(query);
+                if (resultados.length === 0) { suggestionsBox.style.display = 'none'; return; }
+                suggestionsBox.innerHTML = resultados.map(m => `<div data-nombre="${m.nombre.replace(/"/g, '&quot;')}">${m.display}</div>`).join('');
+                suggestionsBox.style.display = 'block';
+
+                suggestionsBox.querySelectorAll('div').forEach(div => {
+                    div.addEventListener('click', function() {
+                        materialInput.value = this.dataset.nombre;
+                        hiddenInput.value = this.dataset.nombre;
+                        suggestionsBox.style.display = 'none';
+                    });
+                });
+            });
+
+            materialInput.addEventListener('blur', () => setTimeout(() => suggestionsBox.style.display = 'none', 200));
+
+            rowDiv.querySelector('.remove-item').addEventListener('click', function() {
+                if (itemsContainer.children.length <= MIN_ITEMS) { showToast('Debe haber al menos un material.', true); return; }
+                rowDiv.remove(); updateRemoveButtons();
+            });
+        }
+
+        function updateRemoveButtons() {
+            const rows = itemsContainer.querySelectorAll('.item-row');
+            rows.forEach(row => { const btn = row.querySelector('.remove-item'); if (btn) btn.disabled = (rows.length <= MIN_ITEMS); });
+        }
+
+        // ============================================================
+        // 5. INICIALIZACIÓN
+        // ============================================================
+        function initForm() {
+            fechaInput.value = new Date().toISOString().split('T')[0];
+            USUARIOS.forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; usuarioSelect.appendChild(opt); });
+            createItemRow(); updateRemoveButtons();
+        }
+
+        // ============================================================
+        // 6. VALIDACIÓN
+        // ============================================================
+        function validateAndCollect() {
+            if (!fechaInput.value) { showToast('La fecha es obligatoria.', true); return null; }
+            if (!usuarioSelect.value) { showToast('Seleccione un usuario.', true); return null; }
+            if (!usoTextarea.value.trim()) { showToast('Describa el uso.', true); return null; }
+
+            const rows = itemsContainer.querySelectorAll('.item-row');
+            const items = [];
+            let valid = true;
+
+            rows.forEach(row => {
+                const materialInput = row.querySelector('.material-input');
+                const hiddenInput = row.querySelector('.material-hidden');
+                const qtyInput = row.querySelector('.qty-input');
+                const materialName = hiddenInput.value || materialInput.value.trim();
+
+                if (!materialName) { materialInput.classList.add('error-shake'); setTimeout(() => materialInput.classList.remove('error-shake'), 400); valid = false; }
+                if (!qtyInput.value || parseFloat(qtyInput.value) <= 0) { qtyInput.classList.add('error-shake'); setTimeout(() => qtyInput.classList.remove('error-shake'), 400); valid = false; }
+
+                if (materialName && qtyInput.value && parseFloat(qtyInput.value) > 0) {
+                    items.push({ material: materialName, cantidad: parseFloat(qtyInput.value) });
+                }
+            });
+
+            if (!valid) { showToast('Complete todos los materiales y cantidades.', true); return null; }
+            if (items.length === 0) { showToast('Agregue al menos un material válido.', true); return null; }
+
+            return { fecha: fechaInput.value, usuario: usuarioSelect.value, uso: usoTextarea.value.trim(), items };
+        }
+
+        // ============================================================
+        // 7. CONEXIÓN CON GITHUB API
+        // ============================================================
+        async function downloadAndParseExcel(user, repo, path, token) {
+            const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}?t=${Date.now()}`;
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
+            if (!res.ok) {
+                if(res.status === 401) throw new Error("Token inválido o expirado.");
+                if(res.status === 404) throw new Error("No se encontró el repositorio o el archivo Excel.");
+                throw new Error(`Error al descargar: ${res.statusText}`);
+            }
+            const data = await res.json();
+            
+            const binary = atob(data.content);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            
+            const workbook = XLSX.read(bytes, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            return { workbook, sheetName, sha: data.sha };
+        }
+
+        async function updateExcelOnGitHub(user, repo, path, token, workbook, sha, commitMsg) {
+            const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const bytes = new Uint8Array(wbout);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+            const base64Content = btoa(binary);
+
+            const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: commitMsg, content: base64Content, sha: sha })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(`Error al subir: ${err.message || res.statusText}`);
+            }
+            return await res.json();
+        }
+
+        // ============================================================
+        // 8. LÓGICA DE NEGOCIO (RETIRO / DEVOLUCIÓN)
+        // ============================================================
+        async function procesarOperacion(operacion) {
+            const datos = validateAndCollect();
+            if (!datos) return;
+
+            const user = ghUser.value.trim();
+            const repo = ghRepo.value.trim();
+            const path = ghPath.value.trim();
+            const token = ghToken.value.trim();
+
+            if (!user || !repo || !token) { showToast('Complete la configuración de GitHub (Usuario, Repo y Token).', true); return; }
+
+            loader.style.display = 'block';
+            retiroBtn.disabled = true;
+            devolucionBtn.disabled = true;
+            modeBadge.textContent = operacion === 'retiro' ? 'Procesando Retiro...' : 'Procesando Devolución...';
+            modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
+
+            try {
+                const { workbook, sheetName, sha } = await downloadAndParseExcel(user, repo, path, token);
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Convertir a JSON para buscar filas fácilmente
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                let modificados = 0;
+                let noEncontrados = [];
+
+                for (const item of datos.items) {
+                    const nombreBuscado = item.material.toLowerCase().trim();
+                    let rowIndex = -1;
+
+                    // Buscar la fila (Columna A = índice 0)
+                    for (let i = 2; i < json.length; i++) {
+                        const row = json[i];
+                        if (row && row[0] && row[0].toString().toLowerCase().trim() === nombreBuscado) {
+                            rowIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (rowIndex !== -1) {
+                        // Columna CANTIDAD es la D (índice 3)
+                        const celdaCantidad = XLSX.utils.encode_cell({ r: rowIndex, c: 3 });
+                        let valorActual = 0;
+                        
+                        if (worksheet[celdaCantidad] && worksheet[celdaCantidad].v !== undefined) {
+                            valorActual = parseFloat(worksheet[celdaCantidad].v);
+                            if (isNaN(valorActual)) valorActual = 0;
+                        }
+
+                        let nuevoValor = operacion === 'retiro' ? valorActual - item.cantidad : valorActual + item.cantidad;
+                        nuevoValor = Math.max(0, nuevoValor); // No permitir stock negativo
+                        nuevoValor = Math.round(nuevoValor * 100) / 100; // Redondear a 2 decimales
+
+                        // Actualizar celda
+                        worksheet[celdaCantidad] = { t: 'n', v: nuevoValor };
+                        modificados++;
+                    } else {
+                        noEncontrados.push(item.material);
+                    }
+                }
+
+                if (modificados === 0) throw new Error("Ningún material coincidió con la lista del Excel.");
+
+                // Guardar en GitHub
+                const commitMsg = `${operacion.toUpperCase()} - ${datos.us
