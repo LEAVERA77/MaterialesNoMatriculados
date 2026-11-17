@@ -7,6 +7,8 @@ on:
 jobs:
   update-excel:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v3
@@ -30,20 +32,18 @@ jobs:
           datos = json.loads(os.environ['DATOS'])
           archivo = 'listado_materiales_ENERSA.xlsx'
           wb = load_workbook(archivo)
-          
-          # Actualizar Hoja de Stock
           ws = wb.active
+          
           for item in datos['items']:
               for row in ws.iter_rows(min_row=3):
                   if row[0].value and str(row[0].value).strip().lower() == item['material'].strip().lower():
-                      cant = row[3].value or 0
+                      cant = float(row[3].value) if row[3].value else 0.0
                       if datos['operacion'] == 'retiro':
-                          row[3].value = max(0, cant - item['cantidad'])
+                          row[3].value = max(0, cant - float(item['cantidad']))
                       else:
-                          row[3].value = cant + item['cantidad']
+                          row[3].value = cant + float(item['cantidad'])
                       break
           
-          # Registrar en Historial
           if 'Historial' not in wb.sheetnames:
               ws_hist = wb.create_sheet('Historial')
               ws_hist.append(['Fecha', 'Usuario', 'Operacion', 'Material', 'Cantidad', 'Uso'])
