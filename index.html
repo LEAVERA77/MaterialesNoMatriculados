@@ -30,7 +30,7 @@
         .suggestions-box div:hover { background: #e2f0f5; }
         .button-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.8rem; }
         .btn-group { display: flex; gap: 1rem; flex-wrap: wrap; }
-        .btn { border: none; padding: 0.9rem 2rem; border-radius: 50px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; transition: 0.15s; }
+        .btn { border: none; padding: 0.9rem 1.5rem; border-radius: 50px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; transition: 0.15s; }
         .btn-primary { background: #0b2b4b; color: white; }
         .btn-primary:hover { background: #123b63; }
         .btn-warning { background: #b4691f; color: white; }
@@ -47,7 +47,7 @@
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } 100% { transform: translateX(0); } }
         input[readonly] { background-color: #f0f4f8; color: #5e7e99; cursor: not-allowed; }
 
-        /* Estilos para el Modal de Stock */
+        /* Modal Stock */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 10000; padding: 1rem; }
         .modal-content { background: white; border-radius: 20px; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
         .modal-header { padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
@@ -57,7 +57,7 @@
         .modal-search input { width: 100%; padding: 0.8rem 1rem; border: 1.5px solid #cbdae6; border-radius: 12px; }
         .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
         .table-stock { width: 100%; border-collapse: collapse; text-align: left; }
-        .table-stock th, .table-stock td { padding: 0.8rem; border-bottom: 1px solid #edf2f7; }
+        .table-stock th, .table-stock td { padding: 0.8rem; border-bottom: 1px solid #edf2f7; font-size: 0.9rem; }
         .table-stock th { background: #f4f7fc; color: #2c4b66; font-weight: 600; position: sticky; top: 0; }
         .table-stock tr:hover { background: #f9fcff; }
         .stock-cero { color: #c42d2d; font-weight: bold; }
@@ -106,18 +106,18 @@
             <button type="button" id="resetBtn" class="btn btn-secondary"><i class="fas fa-undo-alt"></i> Limpiar</button>
         </div>
     </div>
-    <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Conectando con GitHub y actualizando Excel...</div>
+    <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Conectando con GitHub...</div>
 </div>
 
-<!-- Modal para ver el stock -->
+<!-- Modal Stock -->
 <div class="modal-overlay" id="stockModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fas fa-boxes" style="color: #17a2b8;"></i> Stock Actual (Tiempo Real)</h2>
+            <h2><i class="fas fa-boxes" style="color: #17a2b8;"></i> Stock en Tiempo Real</h2>
             <button type="button" id="closeStockBtn">&times;</button>
         </div>
         <div class="modal-search">
-            <input type="text" id="stockSearchInput" placeholder="Buscar material en el stock...">
+            <input type="text" id="stockSearchInput" placeholder="Buscar material por nombre o especificación...">
         </div>
         <div class="modal-body">
             <table class="table-stock" id="stockTable">
@@ -126,12 +126,10 @@
                         <th>Material</th>
                         <th>Especificación</th>
                         <th>Unidad</th>
-                        <th>Stock Actual</th>
+                        <th>Stock</th>
                     </tr>
                 </thead>
-                <tbody id="stockTableBody">
-                    <!-- Se llena dinámicamente -->
-                </tbody>
+                <tbody id="stockTableBody"></tbody>
             </table>
         </div>
     </div>
@@ -200,7 +198,7 @@
         let itemCount = 0;
         const MAX_ITEMS = 10;
         const MIN_ITEMS = 1;
-        let stockData = []; // Almacena los datos del Excel para el modal
+        let stockDataGlobal = [];
 
         const fechaInput = document.getElementById('fecha');
         const usuarioSelect = document.getElementById('usuario');
@@ -235,7 +233,6 @@
         function buscarMateriales(query) {
             if (!query || query.trim().length < 2) return [];
             const q = query.toLowerCase().trim();
-            
             let resultados = MATERIALES.filter(m => m.searchString.includes(q));
             
             if (resultados.length === 0) {
@@ -246,7 +243,6 @@
                 scored.sort((a, b) => a.score - b.score);
                 resultados = scored.filter(s => s.score <= Math.max(3, Math.floor(q.length * 0.5))).map(s => s.material);
             }
-
             return resultados.slice(0, 10);
         }
 
@@ -291,11 +287,7 @@
                 if (query.trim().length < 2) { suggestionsBox.style.display = 'none'; hiddenInput.value = ''; return; }
                 
                 const resultados = buscarMateriales(query);
-                
-                if (resultados.length === 0) { 
-                    suggestionsBox.style.display = 'none'; 
-                    return; 
-                }
+                if (resultados.length === 0) { suggestionsBox.style.display = 'none'; return; }
                 
                 suggestionsBox.innerHTML = resultados.map(m => `<div data-nombre="${m.nombre.replace(/"/g, '&quot;')}" data-unidad="${m.unidad}">${m.display}</div>`).join('');
                 suggestionsBox.style.display = 'block';
@@ -348,7 +340,7 @@
                 }
             });
 
-            if (!valid) { showToast('Complete todos los materiales, cantidades y unidades.', true); return null; }
+            if (!valid) { showToast('Complete todos los materiales.', true); return null; }
             if (items.length === 0) { showToast('Agregue al menos un material válido.', true); return null; }
 
             return { fecha: fechaInput.value, usuario: usuarioSelect.value, uso: usoTextarea.value.trim(), items };
@@ -396,21 +388,19 @@
             return await res.json();
         }
 
-        // Lógica para mostrar el modal de stock
         async function mostrarStock() {
             stockModal.style.display = 'flex';
-            stockTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando stock...</td></tr>';
+            stockTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando stock desde GitHub...</td></tr>';
             stockSearchInput.value = '';
             
             try {
                 const { json } = await downloadAndParseExcel();
-                stockData = [];
+                stockDataGlobal = [];
                 
-                // Procesar filas (desde la fila 2, omitiendo título y cabecera)
                 for (let i = 2; i < json.length; i++) {
                     const row = json[i];
                     if (row && row[0]) {
-                        stockData.push({
+                        stockDataGlobal.push({
                             nombre: row[0] || '',
                             especificacion: row[1] || '',
                             unidad: row[2] || '',
@@ -418,7 +408,7 @@
                         });
                     }
                 }
-                renderStockTable(stockData);
+                renderStockTable(stockDataGlobal);
             } catch (error) {
                 stockTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#c42d2d;">Error al cargar: ${error.message}</td></tr>`;
             }
@@ -432,4 +422,8 @@
             stockTableBody.innerHTML = data.map(item => {
                 let qtyClass = '';
                 if (item.cantidad <= 0) qtyClass = 'stock-cero';
-                else if (item.cantidad < 
+                else if (item.cantidad < 5) qtyClass = 'stock-bajo';
+                
+                return `
+                    <tr>
+                        <td>${item.nombre
