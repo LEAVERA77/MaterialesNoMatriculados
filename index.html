@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ENERSA · Gestión de Materiales</title>
-    <!-- Librería SheetJS para manejar Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -21,7 +20,8 @@
         .items-section { background: #f9fcff; border-radius: 22px; padding: 1.6rem; margin: 2rem 0; border: 1px solid #dde7f0; }
         .item-row { display: flex; gap: 0.8rem; align-items: flex-start; margin-bottom: 1rem; background: white; padding: 0.8rem; border-radius: 20px; border: 1px solid #e3ecf3; position: relative; }
         .material-col { flex: 3; position: relative; }
-        .qty-col { flex: 1; }
+        .qty-col { flex: 1; min-width: 80px; }
+        .unit-col { flex: 1; min-width: 90px; }
         .action-col { display: flex; align-items: center; justify-content: center; flex: 0 0 40px; }
         .btn-icon { background: #fff1f0; border: none; border-radius: 12px; width: 40px; height: 40px; color: #b33a3a; cursor: pointer; }
         .btn-icon:hover { background: #ffe0dd; }
@@ -43,17 +43,16 @@
         .loader { display: none; text-align: center; padding: 1rem; font-weight: 600; color: #1f7b8c; font-size: 1.1rem; }
         .error-shake { animation: shake 0.2s ease-in-out; border-color: #c42d2d !important; }
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } 100% { transform: translateX(0); } }
+        input[readonly] { background-color: #f0f4f8; color: #5e7e99; cursor: not-allowed; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1><i class="fas fa-clipboard-list"></i> Gestión de Materiales - ENERSA</h1>
 
-    <!-- Panel de Configuración Oculto (Ya tiene los datos) -->
     <input type="hidden" id="ghUser" value="LEAVERA77">
     <input type="hidden" id="ghRepo" value="MaterialesNoMatriculados">
     <input type="hidden" id="ghPath" value="listado_materiales_ENERSA.xlsx">
-    <!-- Token incrustado directamente -->
     <input type="hidden" id="ghToken" value="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">
 
     <div class="form-grid">
@@ -94,7 +93,7 @@
 <div id="toast" class="toast">Mensaje</div>
 
 <script>
-    (function(){
+    document.addEventListener('DOMContentLoaded', () => {
         const MATERIALES_RAW = [
             "Alambre de fardo | Fardo Negro Nº 16 | kg", "Alambre de fardo galvanizado | Fardo galvanizado Nº 16 | kg",
             "Arco para hoja sierra | Arco Sierra Manual Profesional 300 Mm Con Hoja 12\" | pieza", "Balde de plástico albañil | | piezas",
@@ -140,7 +139,13 @@
 
         const MATERIALES = MATERIALES_RAW.map(line => {
             const parts = line.split('|').map(s => s.trim());
-            return { nombre: parts[0] || '—', especificacion: parts[1] || '', unidad: parts[2] || 'u.', display: `${parts[0]} ${parts[1] ? '· ' + parts[1] : ''} (${parts[2]})` };
+            return { 
+                nombre: parts[0] || '—', 
+                especificacion: parts[1] || '', 
+                unidad: parts[2] || 'u.', 
+                display: `${parts[0]} ${parts[1] ? '· ' + parts[1] : ''} (${parts[2]})`,
+                searchString: `${parts[0]} ${parts[1]}`.toLowerCase()
+            };
         });
 
         const USUARIOS = ["MATEO, LUCAS", "ESTEBENET, JONATHAN", "GRIMALDI, GABRIEL", "LEHNER, DANILO", "MONZÓN, HUGO", "GIMENEZ, ROSENDO", "CIARROCA, ENZO", "CIARROCA, MANUEL", "ISAAC, LEANDRO", "ELZESAR, JUAN", "MILANICH, ALEJANDRO", "CIARROCA, MANUEL", "GRILLE, EMILIANO", "NARVAEZ, RAUL", "MAIER, FERNANDO", "ALBARENQUE, FERNANDO", "LARA, VALENTIN", "ECKERT, ENZO", "WEISHEIM, FABIAN", "TABORDA, SERGIO", "GOMEZ, ALEJANDRO", "OLGIATTI, DUILIO", "VERA, LEANDRO"];
@@ -161,16 +166,34 @@
         const toastEl = document.getElementById('toast');
         const loader = document.getElementById('loader');
         
-        const ghUser = document.getElementById('ghUser');
-        const ghRepo = document.getElementById('ghRepo');
-        const ghPath = document.getElementById('ghPath');
-        const ghToken = document.getElementById('ghToken');
+        const ghUser = document.getElementById('ghUser').value;
+        const ghRepo = document.getElementById('ghRepo').value;
+        const ghPath = document.getElementById('ghPath').value;
+        const ghToken = document.getElementById('ghToken').value;
 
         function showToast(msg, isError = false) {
             toastEl.textContent = msg;
             toastEl.className = `toast show ${isError ? 'error' : ''}`;
             clearTimeout(window.toastTimeout);
             window.toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 4000);
+        }
+
+        function buscarMateriales(query) {
+            if (!query || query.trim().length < 2) return [];
+            const q = query.toLowerCase().trim();
+            
+            let resultados = MATERIALES.filter(m => m.searchString.includes(q));
+            
+            if (resultados.length === 0) {
+                const scored = MATERIALES.map(m => {
+                    const dist = levenshtein(q, m.searchString);
+                    return { material: m, score: dist };
+                });
+                scored.sort((a, b) => a.score - b.score);
+                resultados = scored.filter(s => s.score <= Math.max(3, Math.floor(q.length * 0.5))).map(s => s.material);
+            }
+
+            return resultados.slice(0, 10);
         }
 
         function levenshtein(a, b) {
@@ -185,29 +208,20 @@
             return matrix[a.length][b.length];
         }
 
-        function buscarMateriales(query, maxResults = 8) {
-            if (!query || query.trim() === '') return [];
-            const q = query.toLowerCase().trim();
-            const scored = MATERIALES.map(m => {
-                const target = (m.nombre + ' ' + m.especificacion).toLowerCase();
-                return { material: m, score: levenshtein(q, target), targetLength: target.length };
-            });
-            scored.sort((a, b) => (a.score / Math.max(1, a.targetLength)) - (b.score / Math.max(1, b.targetLength)));
-            return scored.filter(s => s.score <= Math.max(3, Math.floor(q.length * 0.6))).slice(0, maxResults).map(s => s.material);
-        }
-
         function createItemRow() {
             const rowId = `item-${itemCount}`;
             const rowDiv = document.createElement('div');
             rowDiv.className = 'item-row';
             rowDiv.id = rowId;
+            // Agregamos la columna de unidad
             rowDiv.innerHTML = `
                 <div class="material-col">
-                    <input type="text" class="material-input" placeholder="Buscar material (ej: mecha 10)..." autocomplete="off">
+                    <input type="text" class="material-input" placeholder="Buscar material..." autocomplete="off">
                     <div class="suggestions-box" id="sug-${rowId}"></div>
                     <input type="hidden" class="material-hidden" value="">
                 </div>
                 <div class="qty-col"><input type="number" class="qty-input" placeholder="Cant." min="0.01" step="0.01" value=""></div>
+                <div class="unit-col"><input type="text" class="unit-input" placeholder="Unidad" readonly></div>
                 <div class="action-col"><button type="button" class="btn-icon remove-item"><i class="fas fa-trash-alt"></i></button></div>
             `;
             itemsContainer.appendChild(rowDiv);
@@ -216,19 +230,28 @@
             const materialInput = rowDiv.querySelector('.material-input');
             const hiddenInput = rowDiv.querySelector('.material-hidden');
             const suggestionsBox = rowDiv.querySelector('.suggestions-box');
+            const unitInput = rowDiv.querySelector('.unit-input');
 
             materialInput.addEventListener('input', function(e) {
                 const query = e.target.value;
+                unitInput.value = ''; // Limpiar unidad al reescribir
                 if (query.trim().length < 2) { suggestionsBox.style.display = 'none'; hiddenInput.value = ''; return; }
+                
                 const resultados = buscarMateriales(query);
-                if (resultados.length === 0) { suggestionsBox.style.display = 'none'; return; }
-                suggestionsBox.innerHTML = resultados.map(m => `<div data-nombre="${m.nombre.replace(/"/g, '&quot;')}">${m.display}</div>`).join('');
+                
+                if (resultados.length === 0) { 
+                    suggestionsBox.style.display = 'none'; 
+                    return; 
+                }
+                
+                suggestionsBox.innerHTML = resultados.map(m => `<div data-nombre="${m.nombre.replace(/"/g, '&quot;')}" data-unidad="${m.unidad}">${m.display}</div>`).join('');
                 suggestionsBox.style.display = 'block';
 
                 suggestionsBox.querySelectorAll('div').forEach(div => {
                     div.addEventListener('click', function() {
                         materialInput.value = this.dataset.nombre;
                         hiddenInput.value = this.dataset.nombre;
+                        unitInput.value = this.dataset.unidad; // Autocompletar unidad
                         suggestionsBox.style.display = 'none';
                     });
                 });
@@ -260,25 +283,27 @@
                 const materialInput = row.querySelector('.material-input');
                 const hiddenInput = row.querySelector('.material-hidden');
                 const qtyInput = row.querySelector('.qty-input');
+                const unitInput = row.querySelector('.unit-input');
                 const materialName = hiddenInput.value || materialInput.value.trim();
 
                 if (!materialName) { materialInput.classList.add('error-shake'); setTimeout(() => materialInput.classList.remove('error-shake'), 400); valid = false; }
                 if (!qtyInput.value || parseFloat(qtyInput.value) <= 0) { qtyInput.classList.add('error-shake'); setTimeout(() => qtyInput.classList.remove('error-shake'), 400); valid = false; }
+                if (!unitInput.value) { unitInput.classList.add('error-shake'); setTimeout(() => unitInput.classList.remove('error-shake'), 400); valid = false; }
 
                 if (materialName && qtyInput.value && parseFloat(qtyInput.value) > 0) {
-                    items.push({ material: materialName, cantidad: parseFloat(qtyInput.value) });
+                    items.push({ material: materialName, cantidad: parseFloat(qtyInput.value), unidad: unitInput.value });
                 }
             });
 
-            if (!valid) { showToast('Complete todos los materiales y cantidades.', true); return null; }
+            if (!valid) { showToast('Complete todos los materiales, cantidades y unidades.', true); return null; }
             if (items.length === 0) { showToast('Agregue al menos un material válido.', true); return null; }
 
             return { fecha: fechaInput.value, usuario: usuarioSelect.value, uso: usoTextarea.value.trim(), items };
         }
 
-        async function downloadAndParseExcel(user, repo, path, token) {
-            const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}?t=${Date.now()}`;
-            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
+        async function downloadAndParseExcel() {
+            const url = `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${ghPath}?t=${Date.now()}`;
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' } });
             if (!res.ok) {
                 if(res.status === 401) throw new Error("Token inválido o expirado.");
                 if(res.status === 404) throw new Error("No se encontró el repositorio o el archivo Excel.");
@@ -295,17 +320,17 @@
             return { workbook, sheetName, sha: data.sha };
         }
 
-        async function updateExcelOnGitHub(user, repo, path, token, workbook, sha, commitMsg) {
+        async function updateExcelOnGitHub(workbook, sha, commitMsg) {
             const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
             const bytes = new Uint8Array(wbout);
             let binary = '';
             for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
             const base64Content = btoa(binary);
 
-            const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
+            const url = `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${ghPath}`;
             const res = await fetch(url, {
                 method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: commitMsg, content: base64Content, sha: sha })
             });
             if (!res.ok) {
@@ -319,11 +344,6 @@
             const datos = validateAndCollect();
             if (!datos) return;
 
-            const user = ghUser.value.trim();
-            const repo = ghRepo.value.trim();
-            const path = ghPath.value.trim();
-            const token = ghToken.value.trim();
-
             loader.style.display = 'block';
             retiroBtn.disabled = true;
             devolucionBtn.disabled = true;
@@ -331,7 +351,7 @@
             modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
 
             try {
-                const { workbook, sheetName, sha } = await downloadAndParseExcel(user, repo, path, token);
+                const { workbook, sheetName, sha } = await downloadAndParseExcel();
                 const worksheet = workbook.Sheets[sheetName];
 
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
@@ -372,15 +392,14 @@
 
                 if (modificados === 0) throw new Error("Ningún material coincidió con la lista del Excel. Verifique los nombres.");
 
-                const commitMsg = `${operacion.toUpperCase()} - ${datos.usuario} - ${datos.fecha} - ${datos.uso.substring(0, 30)}`;
-                await updateExcelOnGitHub(user, repo, path, token, workbook, sha, commitMsg);
+                const commitMsg = `${operacion.toUpperCase()} - ${datos.usuario} - ${datos.fecha}`;
+                await updateExcelOnGitHub(workbook, sha, commitMsg);
 
                 showToast(`Éxito: ${modificados} materiales actualizados.`);
                 if(noEncontrados.length > 0) {
-                    alert(`Atención: Los siguientes materiales no se encontraron exactamente en el Excel y no fueron modificados:\n- ${noEncontrados.join('\n- ')}`);
+                    alert(`Atención: Los siguientes materiales no se encontraron en el Excel y no fueron modificados:\n- ${noEncontrados.join('\n- ')}`);
                 }
                 
-                // Limpiar el formulario tras grabar
                 usoTextarea.value = '';
                 itemsContainer.innerHTML = '';
                 createItemRow();
@@ -398,35 +417,31 @@
             }
         }
 
-        function initForm() {
-            fechaInput.value = new Date().toISOString().split('T')[0];
-            USUARIOS.forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; usuarioSelect.appendChild(opt); });
-            createItemRow(); 
-            updateRemoveButtons();
+        // INICIALIZAR
+        fechaInput.value = new Date().toISOString().split('T')[0];
+        USUARIOS.forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; usuarioSelect.appendChild(opt); });
+        createItemRow(); 
+        updateRemoveButtons();
 
-            addItemBtn.addEventListener('click', () => {
-                if (itemsContainer.children.length >= MAX_ITEMS) { showToast(`Máximo ${MAX_ITEMS} materiales.`, true); return; }
-                createItemRow(); updateRemoveButtons();
-            });
+        addItemBtn.addEventListener('click', () => {
+            if (itemsContainer.children.length >= MAX_ITEMS) { showToast(`Máximo ${MAX_ITEMS} materiales.`, true); return; }
+            createItemRow(); updateRemoveButtons();
+        });
 
-            retiroBtn.addEventListener('click', () => procesarOperacion('retiro'));
-            devolucionBtn.addEventListener('click', () => procesarOperacion('devolucion'));
-            
-            resetBtn.addEventListener('click', () => {
-                if(confirm('¿Seguro que desea limpiar el formulario?')) {
-                    usoTextarea.value = '';
-                    usuarioSelect.value = '';
-                    itemsContainer.innerHTML = '';
-                    createItemRow();
-                    itemCount = 1;
-                    updateRemoveButtons();
-                }
-            });
-        }
-
-        // Iniciar aplicación
-        initForm();
-    })();
+        retiroBtn.addEventListener('click', () => procesarOperacion('retiro'));
+        devolucionBtn.addEventListener('click', () => procesarOperacion('devolucion'));
+        
+        resetBtn.addEventListener('click', () => {
+            if(confirm('¿Seguro que desea limpiar el formulario?')) {
+                usoTextarea.value = '';
+                usuarioSelect.value = '';
+                itemsContainer.innerHTML = '';
+                createItemRow();
+                itemCount = 1;
+                updateRemoveButtons();
+            }
+        });
+    });
 </script>
 </body>
 </html>
