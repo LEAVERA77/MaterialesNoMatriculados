@@ -139,6 +139,13 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // Variables de configuración de GitHub
+        const ghUser = document.getElementById('ghUser').value;
+        const ghRepo = document.getElementById('ghRepo').value;
+        const ghPath = document.getElementById('ghPath').value;
+        const ghToken = document.getElementById('ghToken').value;
+
+        // Datos de los materiales
         const MATERIALES_RAW = [
             "Alambre de fardo | Fardo Negro Nº 16 | kg", "Alambre de fardo galvanizado | Fardo galvanizado Nº 16 | kg",
             "Arco para hoja sierra | Arco Sierra Manual Profesional 300 Mm Con Hoja 12\" | pieza", "Balde de plástico albañil | | piezas",
@@ -217,11 +224,6 @@
         const closeStockBtn = document.getElementById('closeStockBtn');
         const stockSearchInput = document.getElementById('stockSearchInput');
         const stockTableBody = document.getElementById('stockTableBody');
-
-        const ghUser = document.getElementById('ghUser').value;
-        const ghRepo = document.getElementById('ghRepo').value;
-        const ghPath = document.getElementById('ghPath').value;
-        const ghToken = document.getElementById('ghToken').value;
 
         function showToast(msg, isError = false) {
             toastEl.textContent = msg;
@@ -422,8 +424,4 @@
             stockTableBody.innerHTML = data.map(item => {
                 let qtyClass = '';
                 if (item.cantidad <= 0) qtyClass = 'stock-cero';
-                else if (item.cantidad < 5) qtyClass = 'stock-bajo';
-                
-                return `
-                    <tr>
-                        <td>${item.nombre
+                else if (
