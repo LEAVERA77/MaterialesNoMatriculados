@@ -35,6 +35,8 @@
         .btn-primary:hover { background: #123b63; }
         .btn-warning { background: #b4691f; color: white; }
         .btn-secondary { background: #e9f0f7; color: #1e3b57; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-info:hover { background: #138496; }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .toast { position: fixed; bottom: 30px; right: 30px; background: #1e3b4f; color: white; padding: 1rem 1.8rem; border-radius: 50px; font-weight: 500; opacity: 0; transition: 0.25s; z-index: 9999; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
         .toast.show { opacity: 1; }
@@ -44,6 +46,22 @@
         .error-shake { animation: shake 0.2s ease-in-out; border-color: #c42d2d !important; }
         @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } 100% { transform: translateX(0); } }
         input[readonly] { background-color: #f0f4f8; color: #5e7e99; cursor: not-allowed; }
+
+        /* Estilos para el Modal de Stock */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 10000; padding: 1rem; }
+        .modal-content { background: white; border-radius: 20px; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { font-size: 1.4rem; color: #0b2b4b; margin: 0; }
+        .modal-header button { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; }
+        .modal-search { padding: 1rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .modal-search input { width: 100%; padding: 0.8rem 1rem; border: 1.5px solid #cbdae6; border-radius: 12px; }
+        .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+        .table-stock { width: 100%; border-collapse: collapse; text-align: left; }
+        .table-stock th, .table-stock td { padding: 0.8rem; border-bottom: 1px solid #edf2f7; }
+        .table-stock th { background: #f4f7fc; color: #2c4b66; font-weight: 600; position: sticky; top: 0; }
+        .table-stock tr:hover { background: #f9fcff; }
+        .stock-cero { color: #c42d2d; font-weight: bold; }
+        .stock-bajo { color: #b4691f; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -82,12 +100,41 @@
     <div class="button-bar">
         <div id="modeBadge" style="font-weight: 600; padding: 0.5rem 1.5rem; background: #d4e6f0; border-radius: 40px;">Modo: Esperando acción</div>
         <div class="btn-group">
+            <button type="button" id="verStockBtn" class="btn btn-info"><i class="fas fa-boxes"></i> Ver Stock</button>
             <button type="button" id="retiroBtn" class="btn btn-primary"><i class="fas fa-arrow-down"></i> Grabar retiro</button>
             <button type="button" id="devolucionBtn" class="btn btn-warning"><i class="fas fa-arrow-up"></i> Grabar devolución</button>
             <button type="button" id="resetBtn" class="btn btn-secondary"><i class="fas fa-undo-alt"></i> Limpiar</button>
         </div>
     </div>
     <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Conectando con GitHub y actualizando Excel...</div>
+</div>
+
+<!-- Modal para ver el stock -->
+<div class="modal-overlay" id="stockModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-boxes" style="color: #17a2b8;"></i> Stock Actual (Tiempo Real)</h2>
+            <button type="button" id="closeStockBtn">&times;</button>
+        </div>
+        <div class="modal-search">
+            <input type="text" id="stockSearchInput" placeholder="Buscar material en el stock...">
+        </div>
+        <div class="modal-body">
+            <table class="table-stock" id="stockTable">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Especificación</th>
+                        <th>Unidad</th>
+                        <th>Stock Actual</th>
+                    </tr>
+                </thead>
+                <tbody id="stockTableBody">
+                    <!-- Se llena dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <div id="toast" class="toast">Mensaje</div>
@@ -153,6 +200,7 @@
         let itemCount = 0;
         const MAX_ITEMS = 10;
         const MIN_ITEMS = 1;
+        let stockData = []; // Almacena los datos del Excel para el modal
 
         const fechaInput = document.getElementById('fecha');
         const usuarioSelect = document.getElementById('usuario');
@@ -162,10 +210,16 @@
         const retiroBtn = document.getElementById('retiroBtn');
         const devolucionBtn = document.getElementById('devolucionBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const verStockBtn = document.getElementById('verStockBtn');
         const modeBadge = document.getElementById('modeBadge');
         const toastEl = document.getElementById('toast');
         const loader = document.getElementById('loader');
         
+        const stockModal = document.getElementById('stockModal');
+        const closeStockBtn = document.getElementById('closeStockBtn');
+        const stockSearchInput = document.getElementById('stockSearchInput');
+        const stockTableBody = document.getElementById('stockTableBody');
+
         const ghUser = document.getElementById('ghUser').value;
         const ghRepo = document.getElementById('ghRepo').value;
         const ghPath = document.getElementById('ghPath').value;
@@ -213,7 +267,6 @@
             const rowDiv = document.createElement('div');
             rowDiv.className = 'item-row';
             rowDiv.id = rowId;
-            // Agregamos la columna de unidad
             rowDiv.innerHTML = `
                 <div class="material-col">
                     <input type="text" class="material-input" placeholder="Buscar material..." autocomplete="off">
@@ -234,7 +287,7 @@
 
             materialInput.addEventListener('input', function(e) {
                 const query = e.target.value;
-                unitInput.value = ''; // Limpiar unidad al reescribir
+                unitInput.value = '';
                 if (query.trim().length < 2) { suggestionsBox.style.display = 'none'; hiddenInput.value = ''; return; }
                 
                 const resultados = buscarMateriales(query);
@@ -251,7 +304,7 @@
                     div.addEventListener('click', function() {
                         materialInput.value = this.dataset.nombre;
                         hiddenInput.value = this.dataset.nombre;
-                        unitInput.value = this.dataset.unidad; // Autocompletar unidad
+                        unitInput.value = this.dataset.unidad;
                         suggestionsBox.style.display = 'none';
                     });
                 });
@@ -317,7 +370,10 @@
             
             const workbook = XLSX.read(bytes, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
-            return { workbook, sheetName, sha: data.sha };
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            return { workbook, sheetName, worksheet, json, sha: data.sha };
         }
 
         async function updateExcelOnGitHub(workbook, sha, commitMsg) {
@@ -340,108 +396,40 @@
             return await res.json();
         }
 
-        async function procesarOperacion(operacion) {
-            const datos = validateAndCollect();
-            if (!datos) return;
-
-            loader.style.display = 'block';
-            retiroBtn.disabled = true;
-            devolucionBtn.disabled = true;
-            modeBadge.textContent = operacion === 'retiro' ? 'Procesando Retiro...' : 'Procesando Devolución...';
-            modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
-
+        // Lógica para mostrar el modal de stock
+        async function mostrarStock() {
+            stockModal.style.display = 'flex';
+            stockTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando stock...</td></tr>';
+            stockSearchInput.value = '';
+            
             try {
-                const { workbook, sheetName, sha } = await downloadAndParseExcel();
-                const worksheet = workbook.Sheets[sheetName];
-
-                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                let modificados = 0;
-                let noEncontrados = [];
-
-                for (const item of datos.items) {
-                    const nombreBuscado = item.material.toLowerCase().trim();
-                    let rowIndex = -1;
-
-                    for (let i = 2; i < json.length; i++) {
-                        const row = json[i];
-                        if (row && row[0] && row[0].toString().toLowerCase().trim() === nombreBuscado) {
-                            rowIndex = i;
-                            break;
-                        }
-                    }
-
-                    if (rowIndex !== -1) {
-                        const celdaCantidad = XLSX.utils.encode_cell({ r: rowIndex, c: 3 });
-                        let valorActual = 0;
-                        
-                        if (worksheet[celdaCantidad] && worksheet[celdaCantidad].v !== undefined) {
-                            valorActual = parseFloat(worksheet[celdaCantidad].v);
-                            if (isNaN(valorActual)) valorActual = 0;
-                        }
-
-                        let nuevoValor = operacion === 'retiro' ? valorActual - item.cantidad : valorActual + item.cantidad;
-                        nuevoValor = Math.max(0, nuevoValor);
-                        nuevoValor = Math.round(nuevoValor * 100) / 100;
-
-                        worksheet[celdaCantidad] = { t: 'n', v: nuevoValor };
-                        modificados++;
-                    } else {
-                        noEncontrados.push(item.material);
-                    }
-                }
-
-                if (modificados === 0) throw new Error("Ningún material coincidió con la lista del Excel. Verifique los nombres.");
-
-                const commitMsg = `${operacion.toUpperCase()} - ${datos.usuario} - ${datos.fecha}`;
-                await updateExcelOnGitHub(workbook, sha, commitMsg);
-
-                showToast(`Éxito: ${modificados} materiales actualizados.`);
-                if(noEncontrados.length > 0) {
-                    alert(`Atención: Los siguientes materiales no se encontraron en el Excel y no fueron modificados:\n- ${noEncontrados.join('\n- ')}`);
-                }
+                const { json } = await downloadAndParseExcel();
+                stockData = [];
                 
-                usoTextarea.value = '';
-                itemsContainer.innerHTML = '';
-                createItemRow();
-                itemCount = 1;
-                updateRemoveButtons();
-
+                // Procesar filas (desde la fila 2, omitiendo título y cabecera)
+                for (let i = 2; i < json.length; i++) {
+                    const row = json[i];
+                    if (row && row[0]) {
+                        stockData.push({
+                            nombre: row[0] || '',
+                            especificacion: row[1] || '',
+                            unidad: row[2] || '',
+                            cantidad: row[3] !== undefined ? parseFloat(row[3]) : 0
+                        });
+                    }
+                }
+                renderStockTable(stockData);
             } catch (error) {
-                showToast(error.message, true);
-            } finally {
-                loader.style.display = 'none';
-                retiroBtn.disabled = false;
-                devolucionBtn.disabled = false;
-                modeBadge.textContent = 'Modo: Esperando acción';
-                modeBadge.style.background = '#d4e6f0';
+                stockTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#c42d2d;">Error al cargar: ${error.message}</td></tr>`;
             }
         }
 
-        // INICIALIZAR
-        fechaInput.value = new Date().toISOString().split('T')[0];
-        USUARIOS.forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; usuarioSelect.appendChild(opt); });
-        createItemRow(); 
-        updateRemoveButtons();
-
-        addItemBtn.addEventListener('click', () => {
-            if (itemsContainer.children.length >= MAX_ITEMS) { showToast(`Máximo ${MAX_ITEMS} materiales.`, true); return; }
-            createItemRow(); updateRemoveButtons();
-        });
-
-        retiroBtn.addEventListener('click', () => procesarOperacion('retiro'));
-        devolucionBtn.addEventListener('click', () => procesarOperacion('devolucion'));
-        
-        resetBtn.addEventListener('click', () => {
-            if(confirm('¿Seguro que desea limpiar el formulario?')) {
-                usoTextarea.value = '';
-                usuarioSelect.value = '';
-                itemsContainer.innerHTML = '';
-                createItemRow();
-                itemCount = 1;
-                updateRemoveButtons();
+        function renderStockTable(data) {
+            if (data.length === 0) {
+                stockTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron materiales.</td></tr>';
+                return;
             }
-        });
-    });
-</script>
-</body>
-</html>
+            stockTableBody.innerHTML = data.map(item => {
+                let qtyClass = '';
+                if (item.cantidad <= 0) qtyClass = 'stock-cero';
+                else if (item.cantidad < 
