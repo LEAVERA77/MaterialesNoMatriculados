@@ -58,7 +58,7 @@
         <div class="config-grid">
             <div class="field-group">
                 <label>Usuario / Organización</label>
-                <input type="text" id="ghUser" placeholder="Ej: LEAVERA77" value="ENERSA MARIA GRANDE">
+                <input type="text" id="ghUser" placeholder="Ej: LEAVERA77" value="LEAVERA77">
             </div>
             <div class="field-group">
                 <label>Nombre del Repositorio</label>
@@ -193,20 +193,6 @@
         const ghToken = document.getElementById('ghToken');
         const saveConfigBtn = document.getElementById('saveConfigBtn');
 
-        if (localStorage.getItem('ghConfig')) {
-            const conf = JSON.parse(localStorage.getItem('ghConfig'));
-            ghUser.value = conf.user || 'LEAVERA77';
-            ghRepo.value = conf.repo || 'MaterialesNoMatriculados';
-            ghPath.value = conf.path || 'listado_materiales_ENERSA.xlsx';
-            ghToken.value = conf.token || '';
-        }
-
-        saveConfigBtn.addEventListener('click', () => {
-            const conf = { user: ghUser.value.trim(), repo: ghRepo.value.trim(), path: ghPath.value.trim(), token: ghToken.value.trim() };
-            localStorage.setItem('ghConfig', JSON.stringify(conf));
-            showToast('Configuración guardada localmente.');
-        });
-
         // ============================================================
         // 3. FUNCIONES AUXILIARES
         // ============================================================
@@ -295,12 +281,50 @@
         }
 
         // ============================================================
-        // 5. INICIALIZACIÓN
+        // 5. INICIALIZACIÓN Y EVENTOS
         // ============================================================
         function initForm() {
             fechaInput.value = new Date().toISOString().split('T')[0];
             USUARIOS.forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; usuarioSelect.appendChild(opt); });
-            createItemRow(); updateRemoveButtons();
+            createItemRow(); 
+            updateRemoveButtons();
+
+            // Cargar config previa
+            if (localStorage.getItem('ghConfig')) {
+                const conf = JSON.parse(localStorage.getItem('ghConfig'));
+                ghUser.value = conf.user || 'LEAVERA77';
+                ghRepo.value = conf.repo || 'MaterialesNoMatriculados';
+                ghPath.value = conf.path || 'listado_materiales_ENERSA.xlsx';
+                ghToken.value = conf.token || '';
+            }
+
+            // Evento guardar config
+            saveConfigBtn.addEventListener('click', () => {
+                const conf = { user: ghUser.value.trim(), repo: ghRepo.value.trim(), path: ghPath.value.trim(), token: ghToken.value.trim() };
+                localStorage.setItem('ghConfig', JSON.stringify(conf));
+                showToast('Configuración guardada en tu navegador.');
+            });
+
+            // Evento agregar item
+            addItemBtn.addEventListener('click', () => {
+                if (itemsContainer.children.length >= MAX_ITEMS) { showToast(`Máximo ${MAX_ITEMS} materiales.`, true); return; }
+                createItemRow(); updateRemoveButtons();
+            });
+
+            // Eventos de acción principal
+            retiroBtn.addEventListener('click', () => procesarOperacion('retiro'));
+            devolucionBtn.addEventListener('click', () => procesarOperacion('devolucion'));
+            
+            resetBtn.addEventListener('click', () => {
+                if(confirm('¿Seguro que desea limpiar el formulario?')) {
+                    usoTextarea.value = '';
+                    usuarioSelect.value = '';
+                    itemsContainer.innerHTML = '';
+                    createItemRow();
+                    itemCount = 1;
+                    updateRemoveButtons();
+                }
+            });
         }
 
         // ============================================================
@@ -401,7 +425,6 @@
                 const { workbook, sheetName, sha } = await downloadAndParseExcel(user, repo, path, token);
                 const worksheet = workbook.Sheets[sheetName];
 
-                // Convertir a JSON para buscar filas fácilmente
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 let modificados = 0;
                 let noEncontrados = [];
@@ -410,7 +433,7 @@
                     const nombreBuscado = item.material.toLowerCase().trim();
                     let rowIndex = -1;
 
-                    // Buscar la fila (Columna A = índice 0)
+                    // Buscar la fila en la columna A (índice 0)
                     for (let i = 2; i < json.length; i++) {
                         const row = json[i];
                         if (row && row[0] && row[0].toString().toLowerCase().trim() === nombreBuscado) {
@@ -419,29 +442,4 @@
                         }
                     }
 
-                    if (rowIndex !== -1) {
-                        // Columna CANTIDAD es la D (índice 3)
-                        const celdaCantidad = XLSX.utils.encode_cell({ r: rowIndex, c: 3 });
-                        let valorActual = 0;
-                        
-                        if (worksheet[celdaCantidad] && worksheet[celdaCantidad].v !== undefined) {
-                            valorActual = parseFloat(worksheet[celdaCantidad].v);
-                            if (isNaN(valorActual)) valorActual = 0;
-                        }
-
-                        let nuevoValor = operacion === 'retiro' ? valorActual - item.cantidad : valorActual + item.cantidad;
-                        nuevoValor = Math.max(0, nuevoValor); // No permitir stock negativo
-                        nuevoValor = Math.round(nuevoValor * 100) / 100; // Redondear a 2 decimales
-
-                        // Actualizar celda
-                        worksheet[celdaCantidad] = { t: 'n', v: nuevoValor };
-                        modificados++;
-                    } else {
-                        noEncontrados.push(item.material);
-                    }
-                }
-
-                if (modificados === 0) throw new Error("Ningún material coincidió con la lista del Excel.");
-
-                // Guardar en GitHub
-                const commitMsg = `${operacion.toUpperCase()} - ${datos.us
+                    if
