@@ -13,9 +13,6 @@
         .container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 28px; box-shadow: 0 15px 35px rgba(0, 20, 30, 0.12); padding: 2rem; }
         h1 { font-size: 1.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; border-bottom: 3px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.8rem; color: #0b2b4b; }
         h1 i { color: #1f7b8c; }
-        .config-panel { background: #fff3cd; border: 1px solid #ffe69c; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; }
-        .config-panel h3 { margin-bottom: 1rem; color: #664d03; display: flex; align-items: center; gap: 0.5rem; }
-        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem; margin-bottom: 1.5rem; }
         .field-group { display: flex; flex-direction: column; gap: 0.45rem; }
         .field-group label { font-weight: 600; font-size: 0.9rem; text-transform: uppercase; color: #2c4b66; }
@@ -52,29 +49,12 @@
 <div class="container">
     <h1><i class="fas fa-clipboard-list"></i> Gestión de Materiales - ENERSA</h1>
 
-    <!-- Panel de Configuración de GitHub -->
-    <div class="config-panel">
-        <h3><i class="fab fa-github"></i> Configuración del Repositorio (Solo llenar la primera vez)</h3>
-        <div class="config-grid">
-            <div class="field-group">
-                <label>Usuario / Organización</label>
-                <input type="text" id="ghUser" placeholder="Ej: LEAVERA77" value="LEAVERA77">
-            </div>
-            <div class="field-group">
-                <label>Nombre del Repositorio</label>
-                <input type="text" id="ghRepo" placeholder="Ej: MaterialesNoMatriculados" value="MaterialesNoMatriculados">
-            </div>
-            <div class="field-group">
-                <label>Ruta del Archivo</label>
-                <input type="text" id="ghPath" value="listado_materiales_ENERSA.xlsx">
-            </div>
-            <div class="field-group">
-                <label>Token de GitHub (Fine-grained)</label>
-                <input type="password" id="ghToken" placeholder="github_pat_...">
-            </div>
-        </div>
-        <button type="button" id="saveConfigBtn" class="btn btn-secondary" style="margin-top: 1rem; font-size: 0.9rem; padding: 0.6rem 1.5rem;"><i class="fas fa-save"></i> Guardar Configuración</button>
-    </div>
+    <!-- Panel de Configuración Oculto (Ya tiene los datos) -->
+    <input type="hidden" id="ghUser" value="LEAVERA77">
+    <input type="hidden" id="ghRepo" value="MaterialesNoMatriculados">
+    <input type="hidden" id="ghPath" value="listado_materiales_ENERSA.xlsx">
+    <!-- Token incrustado directamente -->
+    <input type="hidden" id="ghToken" value="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">
 
     <div class="form-grid">
         <div class="field-group">
@@ -115,9 +95,6 @@
 
 <script>
     (function(){
-        // ============================================================
-        // 1. DATOS (Materiales y Usuarios)
-        // ============================================================
         const MATERIALES_RAW = [
             "Alambre de fardo | Fardo Negro Nº 16 | kg", "Alambre de fardo galvanizado | Fardo galvanizado Nº 16 | kg",
             "Arco para hoja sierra | Arco Sierra Manual Profesional 300 Mm Con Hoja 12\" | pieza", "Balde de plástico albañil | | piezas",
@@ -168,9 +145,6 @@
 
         const USUARIOS = ["MATEO, LUCAS", "ESTEBENET, JONATHAN", "GRIMALDI, GABRIEL", "LEHNER, DANILO", "MONZÓN, HUGO", "GIMENEZ, ROSENDO", "CIARROCA, ENZO", "CIARROCA, MANUEL", "ISAAC, LEANDRO", "ELZESAR, JUAN", "MILANICH, ALEJANDRO", "CIARROCA, MANUEL", "GRILLE, EMILIANO", "NARVAEZ, RAUL", "MAIER, FERNANDO", "ALBARENQUE, FERNANDO", "LARA, VALENTIN", "ECKERT, ENZO", "WEISHEIM, FABIAN", "TABORDA, SERGIO", "GOMEZ, ALEJANDRO", "OLGIATTI, DUILIO", "VERA, LEANDRO"];
 
-        // ============================================================
-        // 2. ESTADO Y ELEMENTOS DEL DOM
-        // ============================================================
         let itemCount = 0;
         const MAX_ITEMS = 10;
         const MIN_ITEMS = 1;
@@ -191,11 +165,7 @@
         const ghRepo = document.getElementById('ghRepo');
         const ghPath = document.getElementById('ghPath');
         const ghToken = document.getElementById('ghToken');
-        const saveConfigBtn = document.getElementById('saveConfigBtn');
 
-        // ============================================================
-        // 3. FUNCIONES AUXILIARES
-        // ============================================================
         function showToast(msg, isError = false) {
             toastEl.textContent = msg;
             toastEl.className = `toast show ${isError ? 'error' : ''}`;
@@ -226,9 +196,6 @@
             return scored.filter(s => s.score <= Math.max(3, Math.floor(q.length * 0.6))).slice(0, maxResults).map(s => s.material);
         }
 
-        // ============================================================
-        // 4. GESTIÓN DE FILAS
-        // ============================================================
         function createItemRow() {
             const rowId = `item-${itemCount}`;
             const rowDiv = document.createElement('div');
@@ -280,56 +247,6 @@
             rows.forEach(row => { const btn = row.querySelector('.remove-item'); if (btn) btn.disabled = (rows.length <= MIN_ITEMS); });
         }
 
-        // ============================================================
-        // 5. INICIALIZACIÓN Y EVENTOS
-        // ============================================================
-        function initForm() {
-            fechaInput.value = new Date().toISOString().split('T')[0];
-            USUARIOS.forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; usuarioSelect.appendChild(opt); });
-            createItemRow(); 
-            updateRemoveButtons();
-
-            // Cargar config previa
-            if (localStorage.getItem('ghConfig')) {
-                const conf = JSON.parse(localStorage.getItem('ghConfig'));
-                ghUser.value = conf.user || 'LEAVERA77';
-                ghRepo.value = conf.repo || 'MaterialesNoMatriculados';
-                ghPath.value = conf.path || 'listado_materiales_ENERSA.xlsx';
-                ghToken.value = conf.token || '';
-            }
-
-            // Evento guardar config
-            saveConfigBtn.addEventListener('click', () => {
-                const conf = { user: ghUser.value.trim(), repo: ghRepo.value.trim(), path: ghPath.value.trim(), token: ghToken.value.trim() };
-                localStorage.setItem('ghConfig', JSON.stringify(conf));
-                showToast('Configuración guardada en tu navegador.');
-            });
-
-            // Evento agregar item
-            addItemBtn.addEventListener('click', () => {
-                if (itemsContainer.children.length >= MAX_ITEMS) { showToast(`Máximo ${MAX_ITEMS} materiales.`, true); return; }
-                createItemRow(); updateRemoveButtons();
-            });
-
-            // Eventos de acción principal
-            retiroBtn.addEventListener('click', () => procesarOperacion('retiro'));
-            devolucionBtn.addEventListener('click', () => procesarOperacion('devolucion'));
-            
-            resetBtn.addEventListener('click', () => {
-                if(confirm('¿Seguro que desea limpiar el formulario?')) {
-                    usoTextarea.value = '';
-                    usuarioSelect.value = '';
-                    itemsContainer.innerHTML = '';
-                    createItemRow();
-                    itemCount = 1;
-                    updateRemoveButtons();
-                }
-            });
-        }
-
-        // ============================================================
-        // 6. VALIDACIÓN
-        // ============================================================
         function validateAndCollect() {
             if (!fechaInput.value) { showToast('La fecha es obligatoria.', true); return null; }
             if (!usuarioSelect.value) { showToast('Seleccione un usuario.', true); return null; }
@@ -359,9 +276,6 @@
             return { fecha: fechaInput.value, usuario: usuarioSelect.value, uso: usoTextarea.value.trim(), items };
         }
 
-        // ============================================================
-        // 7. CONEXIÓN CON GITHUB API
-        // ============================================================
         async function downloadAndParseExcel(user, repo, path, token) {
             const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}?t=${Date.now()}`;
             const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
@@ -401,9 +315,6 @@
             return await res.json();
         }
 
-        // ============================================================
-        // 8. LÓGICA DE NEGOCIO (RETIRO / DEVOLUCIÓN)
-        // ============================================================
         async function procesarOperacion(operacion) {
             const datos = validateAndCollect();
             if (!datos) return;
@@ -412,8 +323,6 @@
             const repo = ghRepo.value.trim();
             const path = ghPath.value.trim();
             const token = ghToken.value.trim();
-
-            if (!user || !repo || !token) { showToast('Complete la configuración de GitHub (Usuario, Repo y Token).', true); return; }
 
             loader.style.display = 'block';
             retiroBtn.disabled = true;
@@ -433,7 +342,6 @@
                     const nombreBuscado = item.material.toLowerCase().trim();
                     let rowIndex = -1;
 
-                    // Buscar la fila en la columna A (índice 0)
                     for (let i = 2; i < json.length; i++) {
                         const row = json[i];
                         if (row && row[0] && row[0].toString().toLowerCase().trim() === nombreBuscado) {
@@ -442,4 +350,83 @@
                         }
                     }
 
-                    if
+                    if (rowIndex !== -1) {
+                        const celdaCantidad = XLSX.utils.encode_cell({ r: rowIndex, c: 3 });
+                        let valorActual = 0;
+                        
+                        if (worksheet[celdaCantidad] && worksheet[celdaCantidad].v !== undefined) {
+                            valorActual = parseFloat(worksheet[celdaCantidad].v);
+                            if (isNaN(valorActual)) valorActual = 0;
+                        }
+
+                        let nuevoValor = operacion === 'retiro' ? valorActual - item.cantidad : valorActual + item.cantidad;
+                        nuevoValor = Math.max(0, nuevoValor);
+                        nuevoValor = Math.round(nuevoValor * 100) / 100;
+
+                        worksheet[celdaCantidad] = { t: 'n', v: nuevoValor };
+                        modificados++;
+                    } else {
+                        noEncontrados.push(item.material);
+                    }
+                }
+
+                if (modificados === 0) throw new Error("Ningún material coincidió con la lista del Excel. Verifique los nombres.");
+
+                const commitMsg = `${operacion.toUpperCase()} - ${datos.usuario} - ${datos.fecha} - ${datos.uso.substring(0, 30)}`;
+                await updateExcelOnGitHub(user, repo, path, token, workbook, sha, commitMsg);
+
+                showToast(`Éxito: ${modificados} materiales actualizados.`);
+                if(noEncontrados.length > 0) {
+                    alert(`Atención: Los siguientes materiales no se encontraron exactamente en el Excel y no fueron modificados:\n- ${noEncontrados.join('\n- ')}`);
+                }
+                
+                // Limpiar el formulario tras grabar
+                usoTextarea.value = '';
+                itemsContainer.innerHTML = '';
+                createItemRow();
+                itemCount = 1;
+                updateRemoveButtons();
+
+            } catch (error) {
+                showToast(error.message, true);
+            } finally {
+                loader.style.display = 'none';
+                retiroBtn.disabled = false;
+                devolucionBtn.disabled = false;
+                modeBadge.textContent = 'Modo: Esperando acción';
+                modeBadge.style.background = '#d4e6f0';
+            }
+        }
+
+        function initForm() {
+            fechaInput.value = new Date().toISOString().split('T')[0];
+            USUARIOS.forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; usuarioSelect.appendChild(opt); });
+            createItemRow(); 
+            updateRemoveButtons();
+
+            addItemBtn.addEventListener('click', () => {
+                if (itemsContainer.children.length >= MAX_ITEMS) { showToast(`Máximo ${MAX_ITEMS} materiales.`, true); return; }
+                createItemRow(); updateRemoveButtons();
+            });
+
+            retiroBtn.addEventListener('click', () => procesarOperacion('retiro'));
+            devolucionBtn.addEventListener('click', () => procesarOperacion('devolucion'));
+            
+            resetBtn.addEventListener('click', () => {
+                if(confirm('¿Seguro que desea limpiar el formulario?')) {
+                    usoTextarea.value = '';
+                    usuarioSelect.value = '';
+                    itemsContainer.innerHTML = '';
+                    createItemRow();
+                    itemCount = 1;
+                    updateRemoveButtons();
+                }
+            });
+        }
+
+        // Iniciar aplicación
+        initForm();
+    })();
+</script>
+</body>
+</html>
