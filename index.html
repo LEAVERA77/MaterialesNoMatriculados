@@ -424,4 +424,146 @@
             stockTableBody.innerHTML = data.map(item => {
                 let qtyClass = '';
                 if (item.cantidad <= 0) qtyClass = 'stock-cero';
-                else if (
+                else if (item.cantidad < 5) qtyClass = 'stock-bajo';
+                
+                return `
+                    <tr>
+                        <td>${item.nombre}</td>
+                        <td>${item.especificacion}</td>
+                        <td>${item.unidad}</td>
+                        <td class="${qtyClass}">${item.cantidad}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function procesarOperacion(operacion) {
+            const datos = validateAndCollect();
+            if (!datos) return;
+
+            loader.style.display = 'block';
+            retiroBtn.disabled = true;
+            devolucionBtn.disabled = true;
+            modeBadge.textContent = operacion === 'retiro' ? 'Procesando Retiro...' : 'Procesando Devolución...';
+            modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
+
+            try {
+                const { workbook, sheetName, sha } = await downloadAndParseExcel();
+                const worksheet = workbook.Sheets[sheetName];
+
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                let modificados = 0;
+                let noEncontrados = [];
+
+                for (const item of datos.items) {
+                    const nombreBuscado = item.material.toLowerCase().trim();
+                    let rowIndex = -1;
+
+                    for (let i = 2; i < json.length; i++) {
+                        const row = json[i];
+                        if (row && row[0] && row[0].toString().toLowerCase().trim() === nombreBuscado) {
+                            rowIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (rowIndex !== -1) {
+                        const celdaCantidad = XLSX.utils.encode_cell({ r: rowIndex, c: 3 });
+                        let valorActual = 0;
+                        
+                        if (worksheet[celdaCantidad] && worksheet[celdaCantidad].v !== undefined) {
+                            valorActual = parseFloat(worksheet[celdaCantidad].v);
+                            if (isNaN(valorActual)) valorActual = 0;
+                        }
+
+                        let nuevoValor = operacion === 'retiro' ? valorActual - item.cantidad : valorActual + item.cantidad;
+                        nuevoValor = Math.max(0, nuevoValor);
+                        nuevoValor = Math.round(nuevoValor * 100) / 100;
+
+                        worksheet[celdaCantidad] = { t: 'n', v: nuevoValor };
+                        modificados++;
+                    } else {
+                        noEncontrados.push(item.material);
+                    }
+                }
+
+                if (modificados === 0) throw new Error("Ningún material coincidió con la lista del Excel. Verifique los nombres.");
+
+                const commitMsg = `${operacion.toUpperCase()} - ${datos.usuario} - ${datos.fecha}`;
+                await updateExcelOnGitHub(workbook, sha, commitMsg);
+
+                showToast(`Éxito: ${modificados} materiales actualizados.`);
+                if(noEncontrados.length > 0) {
+                    alert(`Atención: Los siguientes materiales no se encontraron en el Excel y no fueron modificados:\n- ${noEncontrados.join('\n- ')}`);
+                }
+                
+                usoTextarea.value = '';
+                itemsContainer.innerHTML = '';
+                createItemRow();
+                itemCount = 1;
+                updateRemoveButtons();
+
+            } catch (error) {
+                showToast(error.message, true);
+            } finally {
+                loader.style.display = 'none';
+                retiroBtn.disabled = false;
+                devolucionBtn.disabled = false;
+                modeBadge.textContent = 'Modo: Esperando acción';
+                modeBadge.style.background = '#d4e6f0';
+            }
+        }
+
+        // INICIALIZAR
+        // 1. Poner fecha de hoy
+        fechaInput.value = new Date().toISOString().split('T')[0];
+        
+        // 2. Cargar usuarios
+        USUARIOS.forEach(u => { 
+            const opt = document.createElement('option'); 
+            opt.value = u; 
+            opt.textContent = u; 
+            usuarioSelect.appendChild(opt); 
+        });
+
+        // 3. Fila inicial de material
+        createItemRow(); 
+        updateRemoveButtons();
+
+        // 4. Eventos de botones
+        addItemBtn.addEventListener('click', () => {
+            if (itemsContainer.children.length >= MAX_ITEMS) { showToast(`Máximo ${MAX_ITEMS} materiales.`, true); return; }
+            createItemRow(); updateRemoveButtons();
+        });
+
+        retiroBtn.addEventListener('click', () => procesarOperacion('retiro'));
+        devolucionBtn.addEventListener('click', () => procesarOperacion('devolucion'));
+        verStockBtn.addEventListener('click', mostrarStock);
+        closeStockBtn.addEventListener('click', () => { stockModal.style.display = 'none'; });
+
+        stockSearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) { renderStockTable(stockDataGlobal); return; }
+            
+            const filtered = stockDataGlobal.filter(item => 
+                item.nombre.toLowerCase().includes(query) || 
+                item.especificacion.toLowerCase().includes(query)
+            );
+            renderStockTable(filtered);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if(confirm('¿Seguro que desea limpiar el formulario?')) {
+                usoTextarea.value = '';
+                usuarioSelect.value = '';
+                itemsContainer.innerHTML = '';
+                createItemRow();
+                itemCount = 1;
+                updateRemoveButtons();
+                fechaInput.value = new Date().toISOString().split('T')[0];
+            }
+        });
+    });
+</script>
+</body>
+</html>
