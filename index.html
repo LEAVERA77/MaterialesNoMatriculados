@@ -8,119 +8,306 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+        :root {
+            --bg-color: #f8fafc;
+            --surface-color: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --primary-color: #0f172a;
+            --primary-hover: #1e293b;
+            --accent-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025);
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f4f7fc; padding: 1.5rem; color: #1e2b3a; }
-        .container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 28px; box-shadow: 0 15px 35px rgba(0, 20, 30, 0.12); padding: 2rem; }
-        h1 { font-size: 1.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; border-bottom: 3px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.8rem; color: #0b2b4b; }
-        h1 i { color: #1f7b8c; }
         
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem; margin-bottom: 1.5rem; }
-        .field-group { display: flex; flex-direction: column; gap: 0.45rem; }
-        .field-group label { font-weight: 600; font-size: 0.9rem; text-transform: uppercase; color: #2c4b66; }
-        input, select, textarea { width: 100%; padding: 0.8rem 1rem; border: 1.5px solid #d6e0ea; border-radius: 16px; font-size: 0.95rem; font-family: inherit; }
-        input:focus, select:focus, textarea:focus { outline: none; border-color: #1f7b8c; box-shadow: 0 0 0 4px rgba(31, 123, 140, 0.12); }
-        .items-section { background: #f9fcff; border-radius: 22px; padding: 1.6rem; margin: 2rem 0; border: 1px solid #dde7f0; }
-        .item-row { display: flex; gap: 0.8rem; align-items: flex-start; margin-bottom: 1rem; background: white; padding: 0.8rem; border-radius: 20px; border: 1px solid #e3ecf3; position: relative; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background-color: var(--bg-color); 
+            padding: 2rem 1.5rem; 
+            color: var(--text-main); 
+            line-height: 1.5;
+        }
+
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: var(--surface-color); 
+            border-radius: var(--radius-lg); 
+            box-shadow: var(--shadow-lg); 
+            padding: 2.5rem; 
+            border: 1px solid var(--border-color);
+        }
+
+        h1 { 
+            font-size: 1.5rem; 
+            font-weight: 600; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem; 
+            border-bottom: 1px solid var(--border-color); 
+            padding-bottom: 1.5rem; 
+            margin-bottom: 2rem; 
+            color: var(--primary-color);
+            letter-spacing: -0.02em;
+        }
+        h1 i { color: var(--accent-color); font-size: 1.25rem; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+        .field-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .field-group label { font-weight: 500; font-size: 0.85rem; color: var(--text-muted); }
+        
+        input, select, textarea { 
+            width: 100%; 
+            padding: 0.75rem 1rem; 
+            border: 1px solid var(--border-color); 
+            border-radius: var(--radius-md); 
+            font-size: 0.95rem; 
+            font-family: inherit;
+            color: var(--text-main);
+            background-color: var(--surface-color);
+            transition: all 0.2s ease;
+        }
+        
+        input:focus, select:focus, textarea:focus { 
+            outline: none; 
+            border-color: var(--accent-color); 
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); 
+        }
+
+        input[readonly] { background-color: #f1f5f9; color: var(--text-muted); cursor: not-allowed; }
+
+        .items-section { 
+            background: var(--bg-color); 
+            border-radius: var(--radius-md); 
+            padding: 1.5rem; 
+            margin: 2rem 0; 
+            border: 1px solid var(--border-color); 
+        }
+        .items-section h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .item-row { 
+            display: flex; 
+            gap: 1rem; 
+            align-items: flex-start; 
+            margin-bottom: 1rem; 
+            background: var(--surface-color); 
+            padding: 1rem; 
+            border-radius: var(--radius-md); 
+            border: 1px solid var(--border-color); 
+            position: relative;
+            box-shadow: var(--shadow-sm);
+        }
+        
         .material-col { flex: 3; position: relative; }
         .qty-col { flex: 1; min-width: 80px; }
         .unit-col { flex: 1; min-width: 90px; }
         .action-col { display: flex; align-items: center; justify-content: center; flex: 0 0 40px; }
-        .btn-icon { background: #fff1f0; border: none; border-radius: 12px; width: 40px; height: 40px; color: #b33a3a; cursor: pointer; }
-        .btn-icon:hover { background: #ffe0dd; }
-        .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1.5px solid #cbdae6; border-radius: 16px; max-height: 220px; overflow-y: auto; z-index: 1000; display: none; margin-top: 4px; box-shadow: 0 12px 28px rgba(0,0,0,0.12); }
-        .suggestions-box div { padding: 0.7rem 1rem; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #edf2f7; }
-        .suggestions-box div:hover { background: #e2f0f5; }
-        .button-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.8rem; }
-        .btn-group { display: flex; gap: 0.8rem; flex-wrap: wrap; }
-        .btn { border: none; padding: 0.9rem 1.5rem; border-radius: 50px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; transition: 0.15s; }
-        .btn-primary { background: #0b2b4b; color: white; }
-        .btn-warning { background: #b4691f; color: white; }
-        .btn-secondary { background: #e9f0f7; color: #1e3b57; }
-        .btn-info { background: #17a2b8; color: white; }
-        .btn-success { background: #1f7b5c; color: white; }
-        .btn-danger { background: #b33a3a; color: white; }
-        .btn-icon-small { background: #e9f0f7; border: none; border-radius: 8px; width: 30px; height: 30px; color: #0b2b4b; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem;}
-        .btn-icon-small:hover { background: #d6e0ea; }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .toast { position: fixed; bottom: 30px; right: 30px; background: #1e3b4f; color: white; padding: 1rem 1.8rem; border-radius: 50px; font-weight: 500; opacity: 0; transition: 0.25s; z-index: 9999; }
-        .toast.show { opacity: 1; }
-        .toast.error { background: #b33a3a; }
-        .required:after { content: " *"; color: #c42d2d; }
-        .loader { display: none; text-align: center; padding: 1rem; font-weight: 600; color: #1f7b8c; font-size: 1.1rem; }
-        input[readonly] { background-color: #f0f4f8; color: #5e7e99; cursor: not-allowed; }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 10000; padding: 1rem; }
-        .modal-content { background: white; border-radius: 20px; width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-        .modal-header h2 { font-size: 1.4rem; color: #0b2b4b; margin: 0; }
-        .modal-header button { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; }
-        .modal-search { padding: 1rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; }
-        .modal-search input, .modal-search select { width: 100%; padding: 0.8rem 1rem; border: 1.5px solid #cbdae6; border-radius: 12px; }
-        .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
-        .table-stock { width: 100%; border-collapse: collapse; text-align: left; min-width: 600px; }
-        .table-stock th, .table-stock td { padding: 0.8rem; border-bottom: 1px solid #edf2f7; font-size: 0.9rem; }
-        .table-stock th { background: #f4f7fc; color: #2c4b66; font-weight: 600; position: sticky; top: 0; }
-        .table-stock tr:hover { background: #f9fcff; }
-        .stock-cero { color: #c42d2d; font-weight: bold; }
-        .stock-bajo { color: #b4691f; font-weight: bold; }
         
-        /* Estilo para marcar en negrita los retiros en el historial */
-        .row-retiro { font-weight: 600; color: #0b2b4b; }
-        .row-devolucion { color: #5e7e99; }
+        .btn-icon { 
+            background: #fee2e2; 
+            border: none; 
+            border-radius: var(--radius-sm); 
+            width: 36px; 
+            height: 36px; 
+            color: var(--danger-color); 
+            cursor: pointer; 
+            transition: all 0.2s;
+        }
+        .btn-icon:hover { background: #fecaca; }
+        .btn-icon:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 1rem; background: #f8fafc; border-radius: 0 0 20px 20px; }
+        .suggestions-box { 
+            position: absolute; 
+            top: calc(100% + 4px); 
+            left: 0; 
+            right: 0; 
+            background: var(--surface-color); 
+            border: 1px solid var(--border-color); 
+            border-radius: var(--radius-md); 
+            max-height: 200px; 
+            overflow-y: auto; 
+            z-index: 1000; 
+            display: none; 
+            box-shadow: var(--shadow-lg); 
+        }
+        .suggestions-box div { padding: 0.75rem 1rem; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid var(--border-color); }
+        .suggestions-box div:last-child { border-bottom: none; }
+        .suggestions-box div:hover { background: var(--bg-color); color: var(--accent-color); }
+
+        .button-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 2rem; }
+        .btn-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        
+        .btn { 
+            border: none; 
+            padding: 0.75rem 1.25rem; 
+            border-radius: var(--radius-md); 
+            font-weight: 500; 
+            font-size: 0.9rem;
+            cursor: pointer; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 0.5rem; 
+            transition: all 0.2s ease; 
+        }
+        
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); box-shadow: var(--shadow-md); }
+        
+        .btn-warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+        .btn-warning:hover { background: #fef3c7; }
+        
+        .btn-secondary { background: var(--surface-color); color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { background: var(--bg-color); }
+        
+        .btn-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .btn-info:hover { background: #dbeafe; }
+        
+        .btn-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .btn-success:hover { background: #d1fae5; }
+
+        .btn-danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .btn-danger:hover { background: #fee2e2; }
+        
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
+        .toast { 
+            position: fixed; 
+            bottom: 2rem; 
+            right: 2rem; 
+            background: var(--primary-color); 
+            color: white; 
+            padding: 1rem 1.5rem; 
+            border-radius: var(--radius-md); 
+            font-weight: 500; 
+            opacity: 0; 
+            transform: translateY(10px);
+            transition: all 0.3s ease; 
+            z-index: 9999; 
+            box-shadow: var(--shadow-lg);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.error { background: var(--danger-color); }
+        
+        .required:after { content: " *"; color: var(--danger-color); }
+        
+        .loader { display: none; text-align: center; padding: 1rem; font-weight: 500; color: var(--accent-color); }
+
+        /* Modales */
+        .modal-overlay { 
+            position: fixed; 
+            top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(15, 23, 42, 0.4); 
+            backdrop-filter: blur(4px);
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 10000; 
+            padding: 1rem; 
+        }
+        .modal-content { 
+            background: var(--surface-color); 
+            border-radius: var(--radius-lg); 
+            width: 100%; 
+            max-width: 900px; 
+            max-height: 90vh; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); 
+        }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { font-size: 1.25rem; color: var(--primary-color); margin: 0; font-weight: 600; }
+        .modal-header button { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); transition: color 0.2s; }
+        .modal-header button:hover { color: var(--danger-color); }
+        
+        .modal-search { padding: 1rem 1.5rem; background: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; gap: 1rem; }
+        
+        .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+        
+        .table-stock { width: 100%; border-collapse: collapse; text-align: left; min-width: 600px; }
+        .table-stock th, .table-stock td { padding: 1rem; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+        .table-stock th { background: var(--bg-color); color: var(--text-muted); font-weight: 500; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; position: sticky; top: 0; }
+        .table-stock tr:hover { background: var(--bg-color); }
+        
+        .stock-cero { color: var(--danger-color); font-weight: 600; }
+        .stock-bajo { color: var(--warning-color); font-weight: 600; }
+        
+        .row-retiro { font-weight: 500; color: var(--primary-color); }
+        .row-devolucion { color: var(--text-muted); }
+
+        .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; background: var(--bg-color); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
         
         .table-responsive { overflow-x: auto; width: 100%; }
 
-        /* Estilos para el comprobante */
-        .receipt { background: #fff; border: 2px dashed #cbdae6; padding: 1.5rem; border-radius: 12px; max-width: 400px; margin: 0 auto; font-family: monospace; color: #000; }
-        .receipt h3 { text-align: center; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
-        .receipt p { margin-bottom: 5px; font-size: 0.9rem; }
-        .receipt-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
-        .receipt-table th, .receipt-table td { border-bottom: 1px solid #ddd; padding: 4px; text-align: left; }
-        .receipt-footer { text-align: center; margin-top: 15px; font-size: 0.8rem; color: #666; }
+        /* Comprobante */
+        .receipt { background: #fff; border: 1px solid var(--border-color); padding: 2rem; border-radius: var(--radius-md); max-width: 450px; margin: 0 auto; font-family: 'Inter', monospace; color: var(--text-main); box-shadow: var(--shadow-sm); }
+        .receipt h3 { text-align: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem; font-weight: 600; }
+        .receipt p { margin-bottom: 0.5rem; font-size: 0.9rem; display: flex; justify-content: space-between; }
+        .receipt-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+        .receipt-table th, .receipt-table td { border-bottom: 1px solid var(--border-color); padding: 0.5rem; text-align: left; }
+        .receipt-footer { text-align: center; margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 1rem; }
 
         @media (max-width: 768px) {
             body { padding: 0.5rem; }
-            .container { padding: 1rem; border-radius: 16px; }
-            h1 { font-size: 1.4rem; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+            .container { padding: 1.25rem; border-radius: var(--radius-md); }
+            h1 { font-size: 1.25rem; padding-bottom: 1rem; margin-bottom: 1.5rem; }
             .form-grid { grid-template-columns: 1fr; gap: 1rem; }
-            .item-row { flex-wrap: wrap; padding: 0.6rem; }
+            .item-row { flex-wrap: wrap; padding: 0.75rem; }
             .material-col { flex: 1 1 100%; }
             .qty-col { flex: 1 1 45%; }
             .unit-col { flex: 1 1 45%; }
             .action-col { flex: 1 1 100%; justify-content: flex-end; margin-top: 0.5rem; }
             .button-bar { flex-direction: column; align-items: stretch; }
             .btn-group { flex-direction: column; }
-            .btn { width: 100%; justify-content: center; padding: 1rem; font-size: 1rem; }
-            .modal-content { max-height: 95vh; height: 95vh; border-radius: 12px; }
+            .btn { width: 100%; justify-content: center; padding: 0.85rem; }
+            .modal-content { max-height: 95vh; height: 95vh; border-radius: var(--radius-md); }
             .modal-header h2 { font-size: 1.1rem; }
             .modal-search { flex-direction: column; padding: 1rem; }
             .modal-body { padding: 0.5rem; }
             .modal-footer { flex-direction: column; padding: 1rem; }
-            .table-stock th, .table-stock td { font-size: 0.8rem; padding: 0.5rem; }
+            .table-stock th, .table-stock td { padding: 0.75rem 0.5rem; }
         }
 
         @media print {
             body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; background: white; }
             .table-stock { width: 100%; border: 1px solid #000; min-width: 100%; }
             .table-stock th, .table-stock td { border: 1px solid #000; padding: 0.5rem; font-size: 0.8rem; color: #000; }
             .table-stock th { background: #eee !important; -webkit-print-color-adjust: exact; }
             .modal-overlay { position: static; background: transparent; display: block; padding: 0; }
-            .modal-content { box-shadow: none; max-height: none; max-width: none; border-radius: 0; height: auto; }
+            .modal-content { box-shadow: none; max-height: none; max-width: none; border-radius: 0; height: auto; border: none; }
             .modal-header, .modal-search, .modal-footer { display: none !important; }
             .modal-body { overflow: visible; padding: 0; }
-            .receipt { border: none; margin: 0; max-width: 100%; }
+            .receipt { border: none; margin: 0; max-width: 100%; box-shadow: none; padding: 0; }
             @page { size: A4; margin: 1.5cm; }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 3px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.8rem;">
-        <h1 style="border: none; margin: 0; padding: 0;"><i class="fas fa-clipboard-list"></i> Gestión de Materiales - ENERSA</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 2rem;">
+        <h1 style="border: none; margin: 0; padding: 0;"><i class="fas fa-box"></i> Gestión de Materiales</h1>
+        <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">ENERSA · María Grande</span>
     </div>
 
     <div class="form-grid">
@@ -136,36 +323,36 @@
         </div>
     </div>
 
-    <div class="field-group" style="margin-bottom: 1.2rem;">
+    <div class="field-group" style="margin-bottom: 1.5rem;">
         <label for="uso">Uso / destino <span class="required"></span></label>
-        <textarea id="uso" placeholder="Describa el uso que se le dará al material..." required></textarea>
+        <textarea id="uso" placeholder="Describa el uso o destino del material..." rows="2" required></textarea>
     </div>
 
     <div class="items-section">
-        <h2><i class="fas fa-tools"></i> Materiales a mover</h2>
+        <h2><i class="fas fa-list-ul"></i> Materiales a mover</h2>
         <div id="itemsContainer"></div>
-        <button type="button" id="addItemBtn" class="btn btn-secondary" style="margin-top: 0.8rem; font-size: 0.9rem; padding: 0.6rem 1.2rem;"><i class="fas fa-plus-circle"></i> Añadir otro material</button>
+        <button type="button" id="addItemBtn" class="btn btn-secondary" style="margin-top: 1rem;"><i class="fas fa-plus"></i> Añadir otro material</button>
     </div>
 
     <div class="button-bar">
-        <div id="modeBadge" style="font-weight: 600; padding: 0.5rem 1.5rem; background: #d4e6f0; border-radius: 40px; text-align: center;">Modo: Esperando acción</div>
+        <div id="modeBadge" style="font-weight: 500; font-size: 0.85rem; color: var(--text-muted);">Esperando acción</div>
         <div class="btn-group">
-            <button type="button" id="verStockBtn" class="btn btn-info"><i class="fas fa-boxes"></i> Ver Stock</button>
-            <button type="button" id="verHistorialBtn" class="btn btn-success"><i class="fas fa-history"></i> Historial</button>
-            <button type="button" id="retiroBtn" class="btn btn-primary"><i class="fas fa-arrow-down"></i> Grabar retiro</button>
-            <button type="button" id="devolucionBtn" class="btn btn-warning"><i class="fas fa-arrow-up"></i> Grabar devolución</button>
-            <button type="button" id="resetBtn" class="btn btn-secondary"><i class="fas fa-undo-alt"></i> Limpiar</button>
+            <button type="button" id="verStockBtn" class="btn btn-info"><i class="fas fa-search"></i> Ver Stock</button>
+            <button type="button" id="verHistorialBtn" class="btn btn-secondary"><i class="fas fa-history"></i> Historial</button>
+            <button type="button" id="retiroBtn" class="btn btn-primary"><i class="fas fa-arrow-down"></i> Retirar</button>
+            <button type="button" id="devolucionBtn" class="btn btn-warning"><i class="fas fa-arrow-up"></i> Devolver</button>
+            <button type="button" id="resetBtn" class="btn btn-secondary"><i class="fas fa-times"></i> Limpiar</button>
         </div>
     </div>
-    <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Procesando...</div>
+    <div id="loader" class="loader"><i class="fas fa-circle-notch fa-spin"></i> Procesando...</div>
 </div>
 
 <!-- Modal Stock -->
 <div class="modal-overlay" id="stockModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fas fa-boxes" style="color: #17a2b8;"></i> Stock en Tiempo Real</h2>
-            <button type="button" id="closeStockBtn">&times;</button>
+            <h2>Stock en Tiempo Real</h2>
+            <button type="button" id="closeStockBtn"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-search">
             <input type="text" id="stockSearchInput" placeholder="Buscar material...">
@@ -184,8 +371,8 @@
             </table>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-success" onclick="exportarTablaExcel('stockTable', 'Reporte_de_Stock')"><i class="fas fa-file-excel"></i> Exportar a Excel</button>
-            <button type="button" class="btn btn-primary" onclick="imprimirTabla('stockTable')"><i class="fas fa-print"></i> Imprimir</button>
+            <button type="button" class="btn btn-success" onclick="exportarTablaExcel('stockTable', 'Reporte_de_Stock')"><i class="fas fa-file-excel"></i> Exportar</button>
+            <button type="button" class="btn btn-secondary" onclick="imprimirTabla('stockTable')"><i class="fas fa-print"></i> Imprimir</button>
         </div>
     </div>
 </div>
@@ -194,8 +381,8 @@
 <div class="modal-overlay" id="historyModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fas fa-history" style="color: #1f7b5c;"></i> Historial de Movimientos</h2>
-            <button type="button" id="closeHistoryBtn">&times;</button>
+            <h2>Historial de Movimientos</h2>
+            <button type="button" id="closeHistoryBtn"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-search">
             <select id="filterUserSelect">
@@ -210,17 +397,17 @@
                         <th>Usuario</th>
                         <th>Operación</th>
                         <th>Material</th>
-                        <th>Cantidad</th>
+                        <th>Cant.</th>
                         <th>Uso</th>
-                        <th>Acción</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody"></tbody>
             </table>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-success" onclick="exportarTablaExcel('historyTable', 'Historial_de_Movimientos')"><i class="fas fa-file-excel"></i> Exportar a Excel</button>
-            <button type="button" class="btn btn-primary" onclick="imprimirTabla('historyTable')"><i class="fas fa-print"></i> Imprimir Tabla</button>
+            <button type="button" class="btn btn-success" onclick="exportarTablaExcel('historyTable', 'Historial_de_Movimientos')"><i class="fas fa-file-excel"></i> Exportar</button>
+            <button type="button" class="btn btn-secondary" onclick="imprimirTabla('historyTable')"><i class="fas fa-print"></i> Imprimir</button>
         </div>
     </div>
 </div>
@@ -229,13 +416,11 @@
 <div class="modal-overlay" id="receiptModal">
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
-            <h2><i class="fas fa-receipt"></i> Comprobante</h2>
-            <button type="button" onclick="document.getElementById('receiptModal').style.display='none'">&times;</button>
+            <h2>Comprobante</h2>
+            <button type="button" onclick="document.getElementById('receiptModal').style.display='none'"><i class="fas fa-times"></i></button>
         </div>
-        <div class="modal-body" style="background: #f4f7fc;" id="printAreaReceipt">
-            <div class="receipt" id="receiptContent">
-                <!-- Contenido dinámico -->
-            </div>
+        <div class="modal-body" style="background: var(--bg-color);" id="printAreaReceipt">
+            <div class="receipt" id="receiptContent"></div>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-primary" onclick="imprimirComprobante()"><i class="fas fa-print"></i> Imprimir Ticket</button>
@@ -394,7 +579,7 @@
                 </div>
                 <div class="qty-col"><input type="number" class="qty-input" placeholder="Cant." min="0.01" step="0.01" value=""></div>
                 <div class="unit-col"><input type="text" class="unit-input" placeholder="Unidad" readonly></div>
-                <div class="action-col"><button type="button" class="btn-icon remove-item"><i class="fas fa-trash-alt"></i></button></div>
+                <div class="action-col"><button type="button" class="btn-icon remove-item"><i class="fas fa-trash"></i></button></div>
             `;
             itemsContainer.appendChild(rowDiv);
             itemCount++;
@@ -478,7 +663,6 @@
             return { workbook };
         }
 
-        // NUEVA FUNCIÓN: Mostrar Comprobante
         function mostrarComprobante(datos, operacion) {
             const fechaHora = new Date().toLocaleString('es-AR');
             let tablaHTML = '';
@@ -495,10 +679,10 @@
 
             receiptContent.innerHTML = `
                 <h3>ENERSA</h3>
-                <p><strong>Fecha:</strong> ${fechaHora}</p>
-                <p><strong>Usuario:</strong> ${datos.usuario}</p>
-                <p><strong>Operación:</strong> ${operacion.toUpperCase()}</p>
-                <p><strong>Uso:</strong> ${datos.uso}</p>
+                <p><span>Fecha:</span> <strong>${fechaHora}</strong></p>
+                <p><span>Usuario:</span> <strong>${datos.usuario}</strong></p>
+                <p><span>Operación:</span> <strong>${operacion.toUpperCase()}</strong></p>
+                <p><span>Uso:</span> <strong>${datos.uso}</strong></p>
                 <table class="receipt-table">
                     <thead>
                         <tr>
@@ -537,7 +721,7 @@
             retiroBtn.disabled = true;
             devolucionBtn.disabled = true;
             modeBadge.textContent = operacion === 'retiro' ? 'Procesando Retiro...' : 'Procesando Devolución...';
-            modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
+            modeBadge.style.color = operacion === 'retiro' ? 'var(--accent-color)' : 'var(--warning-color)';
 
             try {
                 const payloadHTML = {
@@ -556,9 +740,8 @@
 
                 if (!res.ok) throw new Error("Error al conectar con Google.");
 
-                showToast(`✅ ${operacion.toUpperCase()} enviado.`);
+                showToast(`✅ ${operacion.toUpperCase()} procesado.`);
                 
-                // Mostramos el comprobante de Retiro/Devolución
                 mostrarComprobante(datos, operacion);
 
                 usoTextarea.value = '';
@@ -573,12 +756,11 @@
                 loader.style.display = 'none';
                 retiroBtn.disabled = false;
                 devolucionBtn.disabled = false;
-                modeBadge.textContent = 'Modo: Esperando acción';
-                modeBadge.style.background = '#d4e6f0';
+                modeBadge.textContent = 'Esperando acción';
+                modeBadge.style.color = 'var(--text-muted)';
             }
         }
 
-        // NUEVA FUNCIÓN: Devolución Rápida desde el historial
         window.devolucionRapida = async function(usuario, material, cantidad, uso) {
             if(!confirm(`¿Está seguro que desea devolver ${cantidad} unidad/es de "${material}" al stock?`)) return;
             
@@ -605,7 +787,7 @@
                     body: JSON.stringify(payloadHTML)
                 });
                 if(!res.ok) throw new Error("Error al conectar con Google.");
-                showToast("✅ Devolución registrada. Espere 20 segundos para ver el stock actualizado.");
+                showToast("✅ Devolución registrada.");
             } catch(e) {
                 showToast(e.message, true);
             }
@@ -613,7 +795,7 @@
 
         async function mostrarStock() {
             stockModal.style.display = 'flex';
-            stockTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            stockTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-circle-notch fa-spin"></i> Cargando...</td></tr>';
             stockSearchInput.value = '';
             
             try {
@@ -635,7 +817,7 @@
                 }
                 renderStockTable(stockDataGlobal);
             } catch (error) {
-                stockTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#c42d2d;">Error: ${error.message}</td></tr>`;
+                stockTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger-color);">Error: ${error.message}</td></tr>`;
             }
         }
 
@@ -652,7 +834,7 @@
 
         async function mostrarHistorial() {
             historyModal.style.display = 'flex';
-            historyTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</td></tr>';
+            historyTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fas fa-circle-notch fa-spin"></i> Cargando...</td></tr>';
             
             try {
                 const { workbook } = await downloadAndParseExcel();
@@ -687,7 +869,7 @@
 
                 renderHistoryTable(historyDataGlobal);
             } catch (error) {
-                historyTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#c42d2d;">Error: ${error.message}</td></tr>`;
+                historyTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger-color);">Error: ${error.message}</td></tr>`;
             }
         }
 
@@ -699,15 +881,12 @@
             const reversedData = [...data].reverse();
             
             historyTableBody.innerHTML = reversedData.map(item => {
-                // Negrita condicional: si es RETIRO, la fila se marca más fuerte
                 let rowClass = item.operacion === 'RETIRO' ? 'row-retiro' : 'row-devolucion';
-                let colorOp = item.operacion === 'RETIRO' ? '#b33a3a' : '#1f7b5c';
+                let colorOp = item.operacion === 'RETIRO' ? 'var(--danger-color)' : 'var(--success-color)';
                 
-                // Generar botón de devolución rápida si fue un retiro
                 let botonAccion = '';
                 if (item.operacion === 'RETIRO') {
-                    // Usamos comillas simples para escapar los strings en el onclick
-                    botonAccion = `<button class="btn-icon-small" title="Devolver este material" onclick="devolucionRapida('${item.usuario.replace(/'/g, "\\'")}', '${item.material.replace(/'/g, "\\'")}', ${item.cantidad}, '${item.uso.replace(/'/g, "\\'")}')"><i class="fas fa-undo"></i></button>`;
+                    botonAccion = `<button class="btn-icon" style="background:transparent; color:var(--text-muted);" title="Devolver" onclick="devolucionRapida('${item.usuario.replace(/'/g, "\\'")}', '${item.material.replace(/'/g, "\\'")}', ${item.cantidad}, '${item.uso.replace(/'/g, "\\'")}')"><i class="fas fa-undo"></i></button>`;
                 }
 
                 return `
@@ -731,7 +910,6 @@
             printArea.id = 'printArea';
             const tablaClon = tabla.cloneNode(true);
             
-            // Ocultar la columna de acción al imprimir
             if (tablaId === 'historyTable') {
                 const rows = tablaClon.querySelectorAll('tr');
                 rows.forEach(row => {
@@ -751,15 +929,12 @@
             setTimeout(() => { printArea.remove(); }, 1000);
         };
 
-        // NUEVA FUNCIÓN: Exportar a Excel
         window.exportarTablaExcel = function(tablaId, nombreArchivo) {
             const tabla = document.getElementById(tablaId);
             if (!tabla || tabla.rows.length <= 1) { alert("No hay datos para exportar."); return; }
             
-            // Clonamos la tabla para manipularla sin afectar la vista
             const tablaClon = tabla.cloneNode(true);
             
-            // Si es la tabla del historial, quitamos la columna de Acciones
             if (tablaId === 'historyTable') {
                 const rows = tablaClon.querySelectorAll('tr');
                 rows.forEach(row => {
@@ -767,7 +942,6 @@
                 });
             }
 
-            // Convertimos la tabla HTML a un libro de Excel
             const wb = XLSX.utils.table_to_book(tablaClon, {sheet: "Datos"});
             const fecha = new Date().toISOString().slice(0,10);
             XLSX.writeFile(wb, `${nombreArchivo}_${fecha}.xlsx`);
