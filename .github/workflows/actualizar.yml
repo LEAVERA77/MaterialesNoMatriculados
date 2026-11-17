@@ -26,7 +26,7 @@ jobs:
           DATOS: ${{ toJson(github.event.client_payload) }}
         run: |
           python -c "
-          import os, json
+          import os, json, sys
           from openpyxl import load_workbook
           
           datos = json.loads(os.environ['DATOS'])
@@ -38,6 +38,32 @@ jobs:
           wb = load_workbook(archivo)
           ws = wb.active
           
+          # ==========================================
+          # FASE 1: VALIDAR STOCK (SOLO SI ES RETIRO)
+          # ==========================================
+          if datos['operacion'] == 'retiro':
+              for item in datos['items']:
+                  encontrado = False
+                  for row in ws.iter_rows(min_row=3):
+                      nombre_excel = str(row[0].value).strip().lower() if row[0].value else ''
+                      nombre_buscado = item['material'].strip().lower()
+                      
+                      if nombre_excel == nombre_buscado:
+                          cant_actual = float(row[3].value) if row[3].value else 0.0
+                          cant_retirar = float(item['cantidad'])
+                          
+                          if cant_retirar > cant_actual:
+                              print(f'ERROR FATAL: Stock insuficiente para {item[\"material\"]}. Solicitado: {cant_retirar}, Disponible: {cant_actual}')
+                              sys.exit(1) # Aborta el proceso y lo pone en rojo en GitHub
+                          encontrado = True
+                          break
+                  if not encontrado:
+                      print(f'ERROR FATAL: Material no encontrado en Excel: {item[\"material\"]}')
+                      sys.exit(1)
+
+          # ==========================================
+          # FASE 2: MODIFICAR EL EXCEL Y GUARDAR HISTORIAL
+          # ==========================================
           for item in datos['items']:
               encontrado = False
               print(f\"Buscando en Excel: [{item['material']}]\")
@@ -49,7 +75,7 @@ jobs:
                       print(f\"  -> ENCONTRADO en fila {row[0].row}: {row[0].value}\")
                       cant = float(row[3].value) if row[3].value else 0.0
                       if datos['operacion'] == 'retiro':
-                          row[3].value = max(0, cant - float(item['cantidad']))
+                          row[3].value = cant - float(item['cantidad']) # Ya sabemos que no dará negativo
                       else:
                           row[3].value = cant + float(item['cantidad'])
                       encontrado = True
