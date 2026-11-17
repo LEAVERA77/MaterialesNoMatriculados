@@ -211,11 +211,14 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // ==========================================
-        // 1. CONFIGURACIÓN
+        // 1. CONFIGURACIÓN DEL TOKEN DE DISPARO
         // ==========================================
         const ghUser = "LEAVERA77";
         const ghRepo = "MaterialesNoMatriculados";
         const ghPath = "listado_materiales_ENERSA.xlsx";
+        
+        // PEGA AQUÍ EL TOKEN CLASSIC NUEVO (con permiso 'workflow')
+        const TOKEN_DISPARO = "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";
         
         let stockDataGlobal = [];
         let historyDataGlobal = [];
@@ -247,9 +250,6 @@
         const filterUserSelect = document.getElementById('filterUserSelect');
         const historyTableBody = document.getElementById('historyTableBody');
 
-        // ==========================================
-        // 2. DATOS BASE
-        // ==========================================
         const MATERIALES_RAW = [
             "Alambre de fardo | Fardo Negro Nº 16 | kg", "Alambre de fardo galvanizado | Fardo galvanizado Nº 16 | kg",
             "Arco para hoja sierra | Arco Sierra Manual Profesional 300 Mm Con Hoja 12\" | pieza", "Balde de plástico albañil | | piezas",
@@ -449,23 +449,37 @@
             modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
 
             try {
-                // PEGA AQUÍ LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT
-                const urlGoogle = "https://script.google.com/macros/s/AKfycbzTUxRc_vcQogoej3ULwHHQPBDeEQYuw6hgnJtxqusbCzuVnJVXnpbM_ABXZb6UED1o/exec";
+                // Usamos AllOrigins como proxy para evitar el bloqueo CORS del navegador
+                const proxyUrl = "https://api.allorigins.win/raw?url=";
+                const githubUrl = `https://api.github.com/repos/${ghUser}/${ghRepo}/actions/dispatches`;
+                const url = proxyUrl + encodeURIComponent(githubUrl);
 
-                const res = await fetch(urlGoogle, {
+                const res = await fetch(url, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN_DISPARO}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
-                        operacion: operacion,
-                        fecha: datos.fecha + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-                        usuario: datos.usuario,
-                        uso: datos.uso,
-                        items: datos.items
+                        event_type: 'actualizar_stock',
+                        client_payload: {
+                            operacion: operacion,
+                            fecha: datos.fecha + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+                            usuario: datos.usuario,
+                            uso: datos.uso,
+                            items: datos.items
+                        }
                     })
                 });
 
-                if (!res.ok) throw new Error("Error al conectar con el puente de Google.");
+                if (!res.ok) {
+                    if(res.status === 401) throw new Error("El Token de Disparo no tiene los permisos correctos.");
+                    if(res.status === 404) throw new Error("No se encontró el repositorio o el workflow.");
+                    throw new Error("Error al enviar la orden a GitHub.");
+                }
 
-                showToast(`✅ ${operacion.toUpperCase()} enviado. GitHub está actualizando el archivo.`);
+                showToast(`✅ ${operacion.toUpperCase()} enviado. GitHub está actualizando el archivo (tarda 20 seg).`);
                 
                 usoTextarea.value = '';
                 itemsContainer.innerHTML = '';
