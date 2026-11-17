@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ENERSA · Gestión de Materiales</title>
-    <!-- Librerías externas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
@@ -449,23 +448,25 @@
             modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
 
             try {
-                // Usamos la URL de Cloudflare Worker
+                // Armamos el objeto EXACTAMENTE como lo espera el Worker
+                const payloadHTML = {
+                    fecha: datos.fecha + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+                    usuario: datos.usuario,
+                    operacion: operacion,
+                    uso: datos.uso,
+                    items: datos.items
+                };
+
                 const res = await fetch(urlWorker, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        event_type: 'actualizar_stock',
-                        client_payload: {
-                            operacion: operacion,
-                            fecha: datos.fecha + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-                            usuario: datos.usuario,
-                            uso: datos.uso,
-                            items: datos.items
-                        }
-                    })
+                    body: JSON.stringify(payloadHTML) // Enviamos los datos limpios
                 });
 
-                if (!res.ok) throw new Error("Error al enviar la orden. Verifique su Worker.");
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || "Error al enviar la orden.");
+                }
 
                 showToast(`✅ ${operacion.toUpperCase()} enviado. GitHub está actualizando el archivo (tarda 20 seg).`);
                 
