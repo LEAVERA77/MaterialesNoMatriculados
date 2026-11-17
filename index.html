@@ -216,8 +216,7 @@
         const ghRepo = "MaterialesNoMatriculados";
         const ghPath = "listado_materiales_ENERSA.xlsx";
         
-        // URL de tu Cloudflare Worker
-        const urlWorker = "https://wandering-mud-fcc0.leavera77.workers.dev/";
+        // URL de Google Apps Script
         const urlGoogle = "https://script.google.com/macros/s/AKfycbwVtmNDuo80dvj1PNVld-FK5oTRsmvP7NWIXpSpq6r9j3sbfKEGpjERCM-LiD_Cgph7/exec";
         
         let stockDataGlobal = [];
@@ -449,7 +448,6 @@
             modeBadge.style.background = operacion === 'retiro' ? '#cce5ff' : '#fdebd0';
 
             try {
-                // Armamos el objeto EXACTAMENTE como lo espera el Worker
                 const payloadHTML = {
                     fecha: datos.fecha + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
                     usuario: datos.usuario,
@@ -458,16 +456,14 @@
                     items: datos.items
                 };
 
-                const res = await fetch(urlWorker, {
+                // Usamos urlGoogle con text/plain para evitar CORS
+                const res = await fetch(urlGoogle, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payloadHTML) // Enviamos los datos limpios
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payloadHTML)
                 });
 
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    throw new Error(errorData.error || "Error al enviar la orden.");
-                }
+                if (!res.ok) throw new Error("Error al conectar con Google.");
 
                 showToast(`✅ ${operacion.toUpperCase()} enviado. GitHub está actualizando el archivo (tarda 20 seg).`);
                 
