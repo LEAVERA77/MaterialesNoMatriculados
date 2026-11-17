@@ -1,0 +1,65 @@
+name: Actualizar Materiales
+
+on:
+  repository_dispatch:
+    types: [actualizar_stock]
+
+jobs:
+  update-excel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar dependencias
+        run: pip install openpyxl
+
+      - name: Actualizar Excel
+        env:
+          DATOS: ${{ toJson(github.event.client_payload) }}
+        run: |
+          python -c "
+          import os, json
+          from openpyxl import load_workbook
+          
+          datos = json.loads(os.environ['DATOS'])
+          archivo = 'listado_materiales_ENERSA.xlsx'
+          wb = load_workbook(archivo)
+          
+          # Actualizar Hoja de Stock
+          ws = wb.active
+          for item in datos['items']:
+              for row in ws.iter_rows(min_row=3):
+                  if row[0].value and str(row[0].value).strip().lower() == item['material'].strip().lower():
+                      cant = row[3].value or 0
+                      if datos['operacion'] == 'retiro':
+                          row[3].value = max(0, cant - item['cantidad'])
+                      else:
+                          row[3].value = cant + item['cantidad']
+                      break
+          
+          # Registrar en Historial
+          if 'Historial' not in wb.sheetnames:
+              ws_hist = wb.create_sheet('Historial')
+              ws_hist.append(['Fecha', 'Usuario', 'Operacion', 'Material', 'Cantidad', 'Uso'])
+          else:
+              ws_hist = wb['Historial']
+              
+          for item in datos['items']:
+              ws_hist.append([datos['fecha'], datos['usuario'], datos['operacion'].upper(), item['material'], item['cantidad'], datos['uso']])
+              
+          wb.save(archivo)
+          "
+      
+      - name: Commit y Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add *.xlsx
+          git commit -m "Actualización de stock: ${{ github.event.client_payload.operacion }} - ${{ github.event.client_payload.usuario }}" || echo "No hay cambios"
+          git push
