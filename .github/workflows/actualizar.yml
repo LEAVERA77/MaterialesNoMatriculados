@@ -40,14 +40,13 @@ jobs:
           
           for item in datos['items']:
               encontrado = False
-              print(f'Buscando en Excel: [{item['material']}]')
+              print(f\"Buscando en Excel: [{item['material']}]\")
               for row in ws.iter_rows(min_row=3):
-                  # Usamos .strip() en ambos lados para evitar problemas por espacios
                   nombre_excel = str(row[0].value).strip().lower() if row[0].value else ''
                   nombre_buscado = item['material'].strip().lower()
                   
                   if nombre_excel == nombre_buscado:
-                      print(f'  -> ENCONTRADO en fila {row[0].row}: {row[0].value}')
+                      print(f\"  -> ENCONTRADO en fila {row[0].row}: {row[0].value}\")
                       cant = float(row[3].value) if row[3].value else 0.0
                       if datos['operacion'] == 'retiro':
                           row[3].value = max(0, cant - float(item['cantidad']))
@@ -56,7 +55,7 @@ jobs:
                       encontrado = True
                       break
               if not encontrado:
-                  print(f'  -> NO SE ENCONTRO: {item['material']}')
+                  print(f\"  -> NO SE ENCONTRO: {item['material']}\")
           
           if 'Historial' not in wb.sheetnames:
               ws_hist = wb.create_sheet('Historial')
