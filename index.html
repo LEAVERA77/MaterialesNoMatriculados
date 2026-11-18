@@ -242,6 +242,19 @@
         .modal-search { padding: 1rem 1.5rem; background: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; gap: 1rem; }
         
         .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+
+        /* Acceso protegido al stock */
+        .pass-box { padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+        .pass-box p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+        .pass-field { position: relative; }
+        .pass-field input { width: 100%; padding: 0.75rem 3rem 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 1rem; font-family: inherit; box-sizing: border-box; }
+        .pass-field input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .pass-field input.invalid { border-color: var(--danger-color); }
+        .pass-toggle { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.4rem; font-size: 1rem; }
+        .pass-error { color: var(--danger-color); font-size: 0.85rem; min-height: 1.2em; }
+        .header-actions { display: flex; align-items: center; gap: 0.5rem; }
+        .modal-header .lock-btn { font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.4rem 0.7rem; display: inline-flex; gap: 0.4rem; align-items: center; color: var(--text-muted); }
+        .modal-header .lock-btn:hover { color: var(--text-main); background: var(--bg-color); }
         
         .table-stock { width: 100%; border-collapse: collapse; text-align: left; min-width: 600px; }
         .table-stock th, .table-stock td { padding: 1rem; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
@@ -337,7 +350,7 @@
     <div class="button-bar">
         <div id="modeBadge" style="font-weight: 500; font-size: 0.85rem; color: var(--text-muted);">Esperando acción</div>
         <div class="btn-group">
-            <button type="button" id="verStockBtn" class="btn btn-info"><i class="fas fa-search"></i> Ver Stock</button>
+            <button type="button" id="verStockBtn" class="btn btn-info" title="Requiere contraseña"><i class="fas fa-lock" id="verStockIcon"></i> Ver Stock</button>
             <button type="button" id="verHistorialBtn" class="btn btn-secondary"><i class="fas fa-history"></i> Historial</button>
             <button type="button" id="retiroBtn" class="btn btn-primary"><i class="fas fa-arrow-down"></i> Retirar</button>
             <button type="button" id="devolucionBtn" class="btn btn-warning"><i class="fas fa-arrow-up"></i> Devolver</button>
@@ -352,7 +365,10 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Stock en Tiempo Real</h2>
-            <button type="button" id="closeStockBtn"><i class="fas fa-times"></i></button>
+            <div class="header-actions">
+                <button type="button" id="lockStockBtn" class="lock-btn" title="Volver a pedir la contraseña"><i class="fas fa-lock"></i> Bloquear</button>
+                <button type="button" id="closeStockBtn" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+            </div>
         </div>
         <div class="modal-search">
             <input type="text" id="stockSearchInput" placeholder="Buscar material...">
@@ -374,6 +390,28 @@
             <button type="button" class="btn btn-success" onclick="exportarTablaExcel('stockTable', 'Reporte_de_Stock')"><i class="fas fa-file-excel"></i> Exportar</button>
             <button type="button" class="btn btn-secondary" onclick="imprimirTabla('stockTable')"><i class="fas fa-print"></i> Imprimir</button>
         </div>
+    </div>
+</div>
+
+<!-- Modal Contraseña Stock -->
+<div class="modal-overlay" id="stockPassModal" role="dialog" aria-modal="true" aria-labelledby="stockPassTitle">
+    <div class="modal-content" style="max-width: 420px;">
+        <div class="modal-header">
+            <h2 id="stockPassTitle"><i class="fas fa-lock"></i> Acceso al stock</h2>
+            <button type="button" id="closeStockPassBtn" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+        <form class="pass-box" id="stockPassForm" autocomplete="off">
+            <p>Ingrese la contraseña para ver el stock.</p>
+            <div class="pass-field">
+                <input type="password" id="stockPassInput" placeholder="Contraseña" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="stockPassError">
+                <button type="button" class="pass-toggle" id="stockPassToggle" aria-label="Mostrar contraseña"><i class="fas fa-eye"></i></button>
+            </div>
+            <div class="pass-error" id="stockPassError" role="alert"></div>
+            <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                <button type="button" class="btn btn-secondary" id="cancelStockPassBtn">Cancelar</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-unlock"></i> Ingresar</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -871,7 +909,112 @@
             }
         }
 
+        // ==========================================
+        // ACCESO AL STOCK CON CONTRASEÑA
+        // Se guarda solo el hash SHA-256 de la contraseña, no el texto.
+        // ==========================================
+        const STOCK_PASS_HASH = 'f8149d718d97cd29ab06903dcd48285278c41a6d16db9d4bec20f25d446c50a0';
+        let stockDesbloqueado = false;
+
+        const stockPassModal = document.getElementById('stockPassModal');
+        const stockPassForm = document.getElementById('stockPassForm');
+        const stockPassInput = document.getElementById('stockPassInput');
+        const stockPassError = document.getElementById('stockPassError');
+        const verStockIcon = document.getElementById('verStockIcon');
+
+        // SHA-256 en JavaScript puro: funciona también al abrir el HTML como archivo local.
+        function sha256(texto) {
+            const bytes = new TextEncoder().encode(texto);
+            const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+            const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+            const len = bytes.length;
+            const total = Math.ceil((len + 9) / 64) * 64;
+            const buf = new Uint8Array(total);
+            buf.set(bytes); buf[len] = 0x80;
+            const view = new DataView(buf.buffer);
+            view.setUint32(total - 8, Math.floor(len / 0x20000000));
+            view.setUint32(total - 4, (len * 8) >>> 0);
+            const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+            const W = new Uint32Array(64);
+            for (let off = 0; off < total; off += 64) {
+                for (let i = 0; i < 16; i++) W[i] = view.getUint32(off + i * 4);
+                for (let i = 16; i < 64; i++) {
+                    const s0 = rotr(W[i-15], 7) ^ rotr(W[i-15], 18) ^ (W[i-15] >>> 3);
+                    const s1 = rotr(W[i-2], 17) ^ rotr(W[i-2], 19) ^ (W[i-2] >>> 10);
+                    W[i] = (W[i-16] + s0 + W[i-7] + s1) >>> 0;
+                }
+                let [a, b, c, d, e, f, g, h] = H;
+                for (let i = 0; i < 64; i++) {
+                    const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+                    const t1 = (h + S1 + ((e & f) ^ (~e & g)) + K[i] + W[i]) >>> 0;
+                    const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+                    const t2 = (S0 + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+                    h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+                }
+                H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+                H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+            }
+            return H.map(x => x.toString(16).padStart(8, '0')).join('');
+        }
+
+        function actualizarIconoStock() {
+            verStockIcon.className = stockDesbloqueado ? 'fas fa-search' : 'fas fa-lock';
+            verStockBtn.title = stockDesbloqueado ? 'Ver stock' : 'Requiere contraseña';
+        }
+
+        function pedirContrasenaStock() {
+            if (stockDesbloqueado) { mostrarStock(); return; }
+            stockPassInput.value = '';
+            stockPassInput.type = 'password';
+            stockPassInput.classList.remove('invalid');
+            stockPassError.textContent = '';
+            stockPassModal.style.display = 'flex';
+            setTimeout(() => stockPassInput.focus(), 50);
+        }
+
+        function cerrarModalContrasena() {
+            stockPassModal.style.display = 'none';
+            verStockBtn.focus();
+        }
+
+        function bloquearStock() {
+            stockDesbloqueado = false;
+            stockDataGlobal = [];
+            stockTableBody.innerHTML = '';
+            stockModal.style.display = 'none';
+            actualizarIconoStock();
+            showToast('🔒 Stock bloqueado.');
+        }
+
+        stockPassForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (sha256(stockPassInput.value) === STOCK_PASS_HASH) {
+                stockDesbloqueado = true;
+                actualizarIconoStock();
+                stockPassModal.style.display = 'none';
+                mostrarStock();
+            } else {
+                stockPassError.textContent = 'Contraseña incorrecta.';
+                stockPassInput.classList.add('invalid', 'error-shake');
+                setTimeout(() => stockPassInput.classList.remove('error-shake'), 400);
+                stockPassInput.select();
+            }
+        });
+        stockPassInput.addEventListener('input', () => { stockPassError.textContent = ''; stockPassInput.classList.remove('invalid'); });
+        document.getElementById('stockPassToggle').addEventListener('click', function() {
+            const visible = stockPassInput.type === 'text';
+            stockPassInput.type = visible ? 'password' : 'text';
+            this.innerHTML = visible ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            this.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+            stockPassInput.focus();
+        });
+        document.getElementById('closeStockPassBtn').addEventListener('click', cerrarModalContrasena);
+        document.getElementById('cancelStockPassBtn').addEventListener('click', cerrarModalContrasena);
+        document.getElementById('lockStockBtn').addEventListener('click', bloquearStock);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && stockPassModal.style.display === 'flex') cerrarModalContrasena(); });
+
         async function mostrarStock() {
+            if (!stockDesbloqueado) { pedirContrasenaStock(); return; }
             stockModal.style.display = 'flex';
             stockTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;"><i class="fas fa-circle-notch fa-spin"></i> Cargando...</td></tr>';
             stockSearchInput.value = '';
@@ -982,6 +1125,7 @@
         }
 
         window.imprimirTabla = function(tablaId) {
+            if (tablaId === 'stockTable' && !stockDesbloqueado) { pedirContrasenaStock(); return; }
             const tabla = document.getElementById(tablaId);
             if (!tabla || tabla.rows.length <= 1) { alert("No hay datos para imprimir."); return; }
             const printArea = document.createElement('div');
@@ -1008,6 +1152,7 @@
         };
 
         window.exportarTablaExcel = function(tablaId, nombreArchivo) {
+            if (tablaId === 'stockTable' && !stockDesbloqueado) { pedirContrasenaStock(); return; }
             const tabla = document.getElementById(tablaId);
             if (!tabla || tabla.rows.length <= 1) { alert("No hay datos para exportar."); return; }
             
@@ -1038,7 +1183,7 @@
 
         retiroBtn.addEventListener('click', () => procesarOperacion('retiro'));
         devolucionBtn.addEventListener('click', () => procesarOperacion('devolucion'));
-        verStockBtn.addEventListener('click', mostrarStock);
+        verStockBtn.addEventListener('click', pedirContrasenaStock);
         verHistorialBtn.addEventListener('click', mostrarHistorial);
         
         closeStockBtn.addEventListener('click', () => { stockModal.style.display = 'none'; });
@@ -1071,5 +1216,5 @@
         });
     });
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5cace9dec40d841',t:'MTc5NTA0NTA4OA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5cace9dec40d841',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
