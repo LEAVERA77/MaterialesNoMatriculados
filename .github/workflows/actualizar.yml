@@ -4,6 +4,11 @@ on:
   repository_dispatch:
     types: [actualizar_stock]
 
+# Evita que dos operaciones simultáneas pisen el Excel
+concurrency:
+  group: actualizar-stock
+  cancel-in-progress: false
+
 jobs:
   update-excel:
     runs-on: ubuntu-latest
@@ -11,12 +16,12 @@ jobs:
       contents: write
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configurar Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Instalar dependencias
         run: pip install openpyxl
@@ -24,82 +29,12 @@ jobs:
       - name: Actualizar Excel
         env:
           DATOS: ${{ toJson(github.event.client_payload) }}
-        run: |
-          python -c "
-          import os, json, sys
-          from openpyxl import load_workbook
-          
-          datos = json.loads(os.environ['DATOS'])
-          print('--- DATOS RECIBIDOS ---')
-          print(json.dumps(datos, indent=2, ensure_ascii=False))
-          print('-----------------------')
-          
-          archivo = 'listado_materiales_ENERSA.xlsx'
-          wb = load_workbook(archivo)
-          ws = wb.active
-          
-          # ==========================================
-          # FASE 1: VALIDAR STOCK (SOLO SI ES RETIRO)
-          # ==========================================
-          if datos['operacion'] == 'retiro':
-              for item in datos['items']:
-                  encontrado = False
-                  for row in ws.iter_rows(min_row=3):
-                      nombre_excel = str(row[0].value).strip().lower() if row[0].value else ''
-                      nombre_buscado = item['material'].strip().lower()
-                      
-                      if nombre_excel == nombre_buscado:
-                          cant_actual = float(row[3].value) if row[3].value else 0.0
-                          cant_retirar = float(item['cantidad'])
-                          
-                          if cant_retirar > cant_actual:
-                              print(f'ERROR FATAL: Stock insuficiente para {item[\"material\"]}. Solicitado: {cant_retirar}, Disponible: {cant_actual}')
-                              sys.exit(1) # Aborta el proceso y lo pone en rojo en GitHub
-                          encontrado = True
-                          break
-                  if not encontrado:
-                      print(f'ERROR FATAL: Material no encontrado en Excel: {item[\"material\"]}')
-                      sys.exit(1)
+        run: python scripts/actualizar_stock.py
 
-          # ==========================================
-          # FASE 2: MODIFICAR EL EXCEL Y GUARDAR HISTORIAL
-          # ==========================================
-          for item in datos['items']:
-              encontrado = False
-              print(f\"Buscando en Excel: [{item['material']}]\")
-              for row in ws.iter_rows(min_row=3):
-                  nombre_excel = str(row[0].value).strip().lower() if row[0].value else ''
-                  nombre_buscado = item['material'].strip().lower()
-                  
-                  if nombre_excel == nombre_buscado:
-                      print(f\"  -> ENCONTRADO en fila {row[0].row}: {row[0].value}\")
-                      cant = float(row[3].value) if row[3].value else 0.0
-                      if datos['operacion'] == 'retiro':
-                          row[3].value = cant - float(item['cantidad']) # Ya sabemos que no dará negativo
-                      else:
-                          row[3].value = cant + float(item['cantidad'])
-                      encontrado = True
-                      break
-              if not encontrado:
-                  print(f\"  -> NO SE ENCONTRO: {item['material']}\")
-          
-          if 'Historial' not in wb.sheetnames:
-              ws_hist = wb.create_sheet('Historial')
-              ws_hist.append(['Fecha', 'Usuario', 'Operacion', 'Material', 'Cantidad', 'Uso'])
-          else:
-              ws_hist = wb['Historial']
-              
-          for item in datos['items']:
-              ws_hist.append([datos['fecha'], datos['usuario'], datos['operacion'].upper(), item['material'], item['cantidad'], datos['uso']])
-              
-          wb.save(archivo)
-          print('Archivo Excel guardado exitosamente.')
-          "
-      
       - name: Commit y Push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add *.xlsx
-          git commit -m "Actualización de stock: ${{ github.event.client_payload.operacion }} - ${{ github.event.client_payload.usuario }}" || echo "No hay cambios"
+          git diff --cached --quiet || git commit -m "Movimiento: ${{ github.event.client_payload.operacion }} · Legajo ${{ github.event.client_payload.legajo }} · ${{ github.event.client_payload.usuario }}"
           git push
