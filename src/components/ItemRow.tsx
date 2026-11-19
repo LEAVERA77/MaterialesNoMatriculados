@@ -1,11 +1,14 @@
+"use client";
+
 import { useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { buscarMateriales } from "../data/materiales";
+import { buscarMateriales, stockDe } from "../data/materiales";
 
 export interface ItemState {
   key: number;
   query: string;
   material: string;
+  materialId?: number;
   unidad: string;
   cantidad: string;
 }
@@ -38,7 +41,7 @@ export default function ItemRow({ item, index, canRemove, invalid, onChange, onR
           autoComplete="off"
           value={item.query}
           onChange={(e) => {
-            onChange({ query: e.target.value, material: "", unidad: "" });
+            onChange({ query: e.target.value, material: "", materialId: undefined, unidad: "" });
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
@@ -49,17 +52,26 @@ export default function ItemRow({ item, index, canRemove, invalid, onChange, onR
             {sugerencias.map((m) => (
               <button
                 type="button"
-                key={m.display}
+                key={m.id ?? m.display}
                 className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm last:border-0 hover:bg-slate-50 hover:text-blue-600"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
-                  onChange({ query: m.nombre + (m.especificacion ? ` · ${m.especificacion}` : ""), material: m.nombre, unidad: m.unidad });
+                  onChange({ query: m.nombre + (m.especificacion ? ` · ${m.especificacion}` : ""), material: m.nombre, materialId: m.id, unidad: m.unidad });
                   setOpen(false);
                 }}
               >
                 <span className="font-medium">{m.nombre}</span>
                 {m.especificacion && <span className="text-slate-500"> · {m.especificacion}</span>}
                 <span className="text-slate-400"> ({m.unidad})</span>
+                {m.stock !== undefined && (
+                  <span
+                    className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      m.stock <= 0 ? "bg-red-50 text-red-600" : m.stock < 5 ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    Stock: {m.stock}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -75,7 +87,12 @@ export default function ItemRow({ item, index, canRemove, invalid, onChange, onR
         value={item.cantidad}
         onChange={(e) => onChange({ cantidad: e.target.value })}
       />
-      <input className="input min-w-[90px] flex-1" placeholder="Unidad" readOnly value={item.unidad} />
+      <div className="flex min-w-[90px] flex-1 flex-col">
+        <input className="input" placeholder="Unidad" readOnly value={item.unidad} />
+        {item.material && stockDe(item.materialId) !== undefined && (
+          <span className="mt-1 text-center text-[11px] text-slate-500">Disp.: {stockDe(item.materialId)}</span>
+        )}
+      </div>
       <button
         type="button"
         onClick={onRemove}

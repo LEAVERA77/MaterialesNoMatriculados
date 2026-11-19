@@ -1,14 +1,16 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { FileSpreadsheet, Loader2, Printer, Smartphone, Undo2, User } from "lucide-react";
-import * as XLSX from "xlsx";
 import Modal from "./Modal";
-import { descargarExcel, exportarExcel, formatearFechaCelda, imprimirTabla } from "../lib/api";
-import { REGEX_RASTRO } from "../lib/device";
+import { exportarExcel, imprimirTabla, obtenerHistorial } from "../lib/api";
 
 export interface HistItem {
   fecha: string;
   usuario: string;
+  legajo: string;
   operacion: string;
+  materialId: number | null;
   material: string;
   cantidad: number;
   uso: string;
@@ -19,10 +21,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   usuarioActual: string;
+  legajoActual: string;
   onDevolucionRapida: (it: HistItem) => Promise<boolean>;
 }
 
-export default function HistoryModal({ open, onClose, usuarioActual, onDevolucionRapida }: Props) {
+export default function HistoryModal({ open, onClose, usuarioActual, legajoActual, onDevolucionRapida }: Props) {
   const [data, setData] = useState<HistItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -32,34 +35,24 @@ export default function HistoryModal({ open, onClose, usuarioActual, onDevolucio
   const cargar = () => {
     setLoading(true);
     setMsg("");
-    descargarExcel()
-      .then((wb) => {
-        if (!wb.SheetNames.includes("Historial")) {
-          setData([]);
-          setMsg("No hay historial registrado aún.");
-          return;
-        }
-        const json = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets["Historial"], { header: 1 });
-        const out: HistItem[] = [];
-        for (let i = 1; i < json.length; i++) {
-          const r = json[i];
-          if (r && r[0]) {
-            const usoRaw = String(r[5] ?? "");
-            const m = usoRaw.match(REGEX_RASTRO);
-            out.push({
-              fecha: formatearFechaCelda(r[0]),
-              usuario: String(r[1] ?? ""),
-              operacion: String(r[2] ?? "").toUpperCase(),
-              material: String(r[3] ?? ""),
-              cantidad: r[4] !== undefined ? parseFloat(String(r[4])) || 0 : 0,
-              uso: m ? usoRaw.replace(REGEX_RASTRO, "") : usoRaw,
-              rastro: m ? m[0].trim().replace(/^\[|\]$/g, "") : "",
-            });
-          }
-        }
-        setData(out);
+    obtenerHistorial()
+      .then((rows) => {
+        if (!rows.length) setMsg("No hay historial registrado aún.");
+        setData(
+          rows.map((r) => ({
+            fecha: r.fecha,
+            usuario: r.usuario,
+            legajo: r.legajo ?? "",
+            operacion: r.operacion.toUpperCase(),
+            materialId: r.materialId,
+            material: r.material,
+            cantidad: r.cantidad,
+            uso: r.uso,
+            rastro: r.rastro,
+          })),
+        );
       })
-      .catch((e) => setMsg("Error: " + e.message))
+      .catch((e: Error) => setMsg("Error: " + e.message))
       .finally(() => setLoading(false));
   };
 
@@ -71,10 +64,11 @@ export default function HistoryModal({ open, onClose, usuarioActual, onDevolucio
   const usuarios = useMemo(() => [...new Set(data.map((d) => d.usuario))].sort(), [data]);
   const filtrado = useMemo(() => {
     let d = data;
-    if (soloMios) d = d.filter((x) => x.usuario.toUpperCase() === usuarioActual.toUpperCase());
+    if (soloMios)
+      d = d.filter((x) => (x.legajo ? x.legajo === legajoActual : x.usuario.toUpperCase() === usuarioActual.toUpperCase()));
     else if (filtro) d = d.filter((x) => x.usuario === filtro);
-    return [...d].reverse();
-  }, [data, filtro, soloMios, usuarioActual]);
+    return d;
+  }, [data, filtro, soloMios, usuarioActual, legajoActual]);
 
   const enc = ["Fecha", "Usuario", "Operación", "Material", "Cant.", "Uso", "Dispositivo"];
   const filas = () => filtrado.map((d) => [d.fecha, d.usuario, d.operacion, d.material, d.cantidad, d.uso, d.rastro]);
@@ -130,7 +124,7 @@ export default function HistoryModal({ open, onClose, usuarioActual, onDevolucio
                   <tr key={i} className={`border-b border-slate-100 align-top hover:bg-slate-50 ${retiro ? "font-medium text-slate-900" : "text-slate-500"}`}>
                     <td className="whitespace-nowrap px-3 py-3">{d.fecha}</td>
                     <td className="px-3 py-3">{d.usuario}</td>
-                    <td className={`px-3 py-3 ${retiro ? "text-red-500" : "text-emerald-600"}`}>{d.operacion}</td>
+                    <td className={`px-3 py-3 ${retiro ? "text-red-500" : d.operacion === "AJUSTE" ? "text-blue-600" : "text-emerald-600"}`}>{d.operacion}</td>
                     <td className="px-3 py-3">{d.material}</td>
                     <td className="px-3 py-3">{d.cantidad}</td>
                     <td className="px-3 py-3">
@@ -148,7 +142,7 @@ export default function HistoryModal({ open, onClose, usuarioActual, onDevolucio
                           className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600"
                           onClick={async () => {
                             const ok = await onDevolucionRapida(d);
-                            if (ok) setTimeout(cargar, 2500);
+                            if (ok) cargar();
                           }}
                         >
                           <Undo2 size={17} />

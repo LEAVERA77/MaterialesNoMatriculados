@@ -4,6 +4,8 @@ export interface Material {
   unidad: string;
   display: string;
   searchString: string;
+  stock?: number;
+  id?: number;
 }
 
 const MATERIALES_RAW: string[] = [
@@ -162,6 +164,27 @@ export const MATERIALES: Material[] = MATERIALES_RAW.filter((l) => {
   };
 });
 
+// Catálogo activo: se reemplaza con los materiales y el stock reales de la base de datos.
+let CATALOGO: Material[] = MATERIALES;
+
+export function setCatalogo(lista: { id: number; nombre: string; especificacion: string; unidad: string; stock: number }[]) {
+  if (!lista.length) return;
+  CATALOGO = lista.map((m) => ({
+    id: m.id,
+    nombre: m.nombre,
+    especificacion: m.especificacion,
+    unidad: m.unidad || "u.",
+    stock: m.stock,
+    display: `${m.nombre}${m.especificacion ? " · " + m.especificacion : ""} (${m.unidad || "u."})`,
+    searchString: `${m.nombre} ${m.especificacion}`.toLowerCase(),
+  }));
+}
+
+export function stockDe(id: number | undefined): number | undefined {
+  if (id === undefined) return undefined;
+  return CATALOGO.find((m) => m.id === id)?.stock;
+}
+
 function levenshtein(a: string, b: string): number {
   const m: number[][] = [];
   for (let i = 0; i <= a.length; i++) m[i] = [i];
@@ -178,12 +201,12 @@ export function buscarMateriales(query: string): Material[] {
   if (!query || query.trim().length < 2) return [];
   const q = normalizar(query.trim());
   const palabras = q.split(/\s+/);
-  let res = MATERIALES.filter((m) => {
+  let res = CATALOGO.filter((m) => {
     const s = normalizar(m.searchString);
     return palabras.every((p) => s.includes(p));
   });
   if (res.length === 0) {
-    res = MATERIALES.map((m) => ({ m, d: levenshtein(q, normalizar(m.searchString)) }))
+    res = CATALOGO.map((m) => ({ m, d: levenshtein(q, normalizar(m.searchString)) }))
       .sort((a, b) => a.d - b.d)
       .filter((s) => s.d <= Math.max(3, Math.floor(q.length * 0.5)))
       .map((s) => s.m);

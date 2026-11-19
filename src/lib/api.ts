@@ -3,21 +3,13 @@ import type { DeviceInfo } from "./device";
 import { etiquetaRastro } from "./device";
 
 export const CONFIG = {
-  ghUser: "LEAVERA77",
-  ghRepo: "MaterialesNoMatriculados",
-  ghPath: "listado_materiales_ENERSA.xlsx",
-  urlGoogle:
-    "https://script.google.com/macros/s/AKfycbwVtmNDuo80dvj1PNVld-FK5oTRsmvP7NWIXpSpq6r9j3sbfKEGpjERCM-LiD_Cgph7/exec",
-  // Hash SHA-256 de la contraseña de stock
-  STOCK_PASS_HASH: "f8149d718d97cd29ab06903dcd48285278c41a6d16db9d4bec20f25d446c50a0",
-  // Agrega la huella del dispositivo al final del campo "uso" (queda registrada sin tocar el Apps Script)
-  RASTRO_EN_USO: true,
   MAX_ITEMS: 10,
 };
 
 export type Operacion = "retiro" | "devolucion";
 
 export interface ItemMov {
+  materialId?: number;
   material: string;
   cantidad: number;
   unidad: string;
@@ -33,32 +25,110 @@ export interface PayloadMovimiento {
   dispositivo: DeviceInfo;
 }
 
-export async function descargarExcel(): Promise<XLSX.WorkBook> {
-  const url = `https://raw.githubusercontent.com/${CONFIG.ghUser}/${CONFIG.ghRepo}/main/${CONFIG.ghPath}?t=${Date.now()}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("No se pudo leer el archivo. Asegúrese de que el repositorio sea público.");
-  const buf = await res.arrayBuffer();
-  return XLSX.read(buf, { type: "array" });
+export interface MaterialDB {
+  id: number;
+  nombre: string;
+  especificacion: string;
+  unidad: string;
+  stock: number;
 }
 
-export async function enviarMovimiento(p: PayloadMovimiento): Promise<void> {
-  const usoFinal = CONFIG.RASTRO_EN_USO ? `${p.uso} ${etiquetaRastro(p.legajo, p.dispositivo)}` : p.uso;
-  const body = {
-    ...p,
-    uso: usoFinal,
-    // Campos planos extra, por si el Apps Script quiere guardarlos en columnas propias
-    dispositivoId: p.dispositivo.id,
-    dispositivoHuella: p.dispositivo.huella,
-    dispositivoDesc: p.dispositivo.descripcion,
-    dispositivoIP: p.dispositivo.ip,
-    userAgent: p.dispositivo.userAgent,
-  };
-  const res = await fetch(CONFIG.urlGoogle, {
+export interface HistRow {
+  id: number;
+  movimientoId: number;
+  fecha: string;
+  usuario: string;
+  legajo: string | null;
+  operacion: string;
+  uso: string;
+  rastro: string;
+  materialId: number | null;
+  material: string;
+  cantidad: number;
+  unidad: string;
+  stockResultante: number | null;
+}
+
+async function leerJSON<T>(res: Response): Promise<T> {
+  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) throw new Error(data.error || `Error del servidor (${res.status}).`);
+  return data;
+}
+
+export async function obtenerMateriales(): Promise<MaterialDB[]> {
+  const r = await leerJSON<{ materiales: MaterialDB[] }>(await fetch("/api/materiales", { cache: "no-store" }));
+  return r.materiales;
+}
+
+export async function obtenerHistorial(): Promise<HistRow[]> {
+  const r = await leerJSON<{ historial: HistRow[] }>(await fetch("/api/movimientos", { cache: "no-store" }));
+  return r.historial;
+}
+
+export async function accesoStock(
+  password: string,
+  extra: Record<string, unknown> = {},
+): Promise<{ stock: MaterialDB[]; githubSync: boolean }> {
+  return leerJSON(
+    await fetch("/api/stock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, ...extra }),
+    }),
+  );
+}
+
+export async function descargarExcelCompleto(password: string) {
+  const res = await fetch("/api/exportar", {
     method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
   });
-  if (!res.ok) throw new Error("Error al conectar con Google.");
+  if (!res.ok) await leerJSON(res);
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `listado_materiales_ENERSA_${hoyISO()}.xlsx`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+export async function sincronizarGithubAhora(password: string): Promise<string> {
+  const r = await leerJSON<{ detalle: string }>(
+    await fetch("/api/exportar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, github: true }),
+    }),
+  );
+  return r.detalle;
+}
+
+export interface ResultadoMovimiento {
+  id: number;
+  usuario: string;
+  operacion: string;
+  items: { material: string; cantidad: number; unidad: string; stock: number }[];
+}
+
+/** Registra el movimiento en la base de datos: el stock se actualiza automáticamente en el servidor. */
+export async function enviarMovimiento(p: PayloadMovimiento): Promise<ResultadoMovimiento> {
+  const r = await leerJSON<{ movimiento: ResultadoMovimiento }>(
+    await fetch("/api/movimientos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fecha: p.fecha,
+        legajo: p.legajo,
+        operacion: p.operacion,
+        uso: p.uso,
+        items: p.items.map((i) => ({ materialId: i.materialId, material: i.material, cantidad: i.cantidad })),
+        rastro: etiquetaRastro(p.legajo, p.dispositivo).replace(/^\[|\]$/g, ""),
+        dispositivo: p.dispositivo,
+      }),
+    }),
+  );
+  return r.movimiento;
 }
 
 export function hoyISO(): string {

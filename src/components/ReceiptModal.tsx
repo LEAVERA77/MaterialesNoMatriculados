@@ -1,3 +1,5 @@
+"use client";
+
 import { Printer } from "lucide-react";
 import Modal from "./Modal";
 import { esc, imprimirHTML, type ItemMov, type Operacion } from "../lib/api";

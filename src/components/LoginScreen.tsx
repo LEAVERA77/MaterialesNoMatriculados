@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, Box, Fingerprint, IdCard, Loader2, LogIn, Smartphone, UserX } from "lucide-react";
 import { buscarPorLegajo, nombreCompleto, type Usuario } from "../data/usuarios";
