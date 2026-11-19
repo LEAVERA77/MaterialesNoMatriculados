@@ -965,21 +965,22 @@ const MATERIALES_RAW = [
             };
         })();
 
-        // Datos que viajan con cada operación (trazabilidad)
+        // Datos que viajan con cada operación (trazabilidad).
+        // Van AGRUPADOS en un solo objeto porque GitHub limita el client_payload
+        // del repository_dispatch a 10 propiedades de primer nivel.
         function datosDispositivo() {
             return {
-                dispositivo_id: DISPOSITIVO.id,
-                dispositivo_huella: DISPOSITIVO.huella,
-                dispositivo_huella_corta: DISPOSITIVO.huellaCorta,
-                dispositivo_resumen: DISPOSITIVO.resumen,
-                dispositivo_so: DISPOSITIVO.so,
-                dispositivo_navegador: DISPOSITIVO.navegador,
-                dispositivo_ua: DISPOSITIVO.estable.ua,
-                dispositivo_pantalla: DISPOSITIVO.estable.pantalla,
-                zona_horaria: DISPOSITIVO.estable.zona,
+                id: DISPOSITIVO.id,
+                huella: DISPOSITIVO.huella,
+                huella_corta: DISPOSITIVO.huellaCorta,
+                resumen: DISPOSITIVO.resumen,
+                so: DISPOSITIVO.so,
+                navegador: DISPOSITIVO.navegador,
+                ua: DISPOSITIVO.estable.ua,
+                pantalla: DISPOSITIVO.estable.pantalla,
+                zona: DISPOSITIVO.estable.zona,
                 idioma: DISPOSITIVO.estable.idioma,
-                origen: location.origin + location.pathname,
-                timestamp_cliente: new Date().toISOString()
+                timestamp: new Date().toISOString()
             };
         }
 
@@ -1439,6 +1440,23 @@ const MATERIALES_RAW = [
             setTimeout(() => { printArea.remove(); }, 1000);
         };
 
+        // El Apps Script responde siempre HTTP 200 (incluso si falló el dispatch),
+        // así que hay que interpretar el cuerpo para no reportar un falso éxito.
+        async function leerRespuestaBackend(res) {
+            try {
+                const texto = await res.text();
+                if (!texto) return { ok: true };
+                const data = JSON.parse(texto);
+                if (data && typeof data === 'object') {
+                    if (data.ok === false) return { ok: false, motivo: data.motivo || data.detalle || 'rechazado' };
+                    return { ok: true, data };
+                }
+                return { ok: true };
+            } catch (e) {
+                return { ok: true }; // respuesta no JSON: clientes/backends antiguos
+            }
+        }
+
         async function procesarOperacion(operacion) {
             const datos = validateAndCollect();
             if (!datos) return;
@@ -1450,14 +1468,16 @@ const MATERIALES_RAW = [
             modeBadge.style.color = operacion === 'retiro' ? 'var(--accent-color)' : 'var(--warning-color)';
 
             try {
-                const payloadHTML = Object.assign({
+                const payloadHTML = {
                     fecha: datos.fecha + ' ' + new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
                     usuario: datos.usuario,
                     legajo: datos.legajo,
                     operacion: operacion,
                     uso: datos.uso,
-                    items: datos.items
-                }, datosDispositivo());
+                    items: datos.items,
+                    dispositivo: datosDispositivo(),
+                    origen: location.origin + location.pathname
+                };
 
                 const res = await fetch(urlGoogle, {
                     method: 'POST',
@@ -1466,6 +1486,12 @@ const MATERIALES_RAW = [
                 });
 
                 if (!res.ok) throw new Error("Error al conectar con Google.");
+
+                // El Apps Script siempre responde 200: hay que leer el cuerpo.
+                const respuesta = await leerRespuestaBackend(res);
+                if (respuesta.ok === false) {
+                    throw new Error('El servidor no registró la operación: ' + (respuesta.motivo || 'error desconocido'));
+                }
 
                 showToast(`✅ ${operacion.toUpperCase()} procesado.`);
                 
@@ -1495,7 +1521,7 @@ const MATERIALES_RAW = [
             const hoy = new Date().toISOString().split('T')[0];
             const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
             
-            const payloadHTML = Object.assign({
+            const payloadHTML = {
                 fecha: hoy + ' ' + hora,
                 usuario: sesion.nombre,
                 legajo: sesion.legajo,
@@ -1505,8 +1531,10 @@ const MATERIALES_RAW = [
                     material: material,
                     cantidad: parseFloat(cantidad),
                     unidad: ''
-                }]
-            }, datosDispositivo());
+                }],
+                dispositivo: datosDispositivo(),
+                origen: location.origin + location.pathname
+            };
 
             try {
                 showToast("Procesando devolución rápida...");

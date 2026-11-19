@@ -133,15 +133,20 @@ function dispararGitHub_(datos) {
       operacion: datos.operacion,         // 4
       uso: datos.uso,                     // 5
       items: datos.items,                 // 6
-      dispositivo: {                      // 7
-        id: datos.dispositivo_id || '',
-        huella: datos.dispositivo_huella || '',
-        resumen: datos.dispositivo_resumen || '',
-        ua: datos.dispositivo_ua || '',
-        pantalla: datos.dispositivo_pantalla || '',
-        zona: datos.zona_horaria || '',
-        timestamp: datos.timestamp_cliente || ''
-      },
+      dispositivo: (function () {
+        // La app ya manda el objeto anidado; si viene plano (clientes viejos)
+        // se arma igual para que el Excel no pierda trazabilidad.
+        var d = datos.dispositivo || {};
+        return {
+          id: d.id || datos.dispositivo_id || '',
+          huella: d.huella || datos.dispositivo_huella || '',
+          resumen: d.resumen || datos.dispositivo_resumen || '',
+          ua: d.ua || datos.dispositivo_ua || '',
+          pantalla: d.pantalla || datos.dispositivo_pantalla || '',
+          zona: d.zona || datos.zona_horaria || '',
+          timestamp: d.timestamp || datos.timestamp_cliente || ''
+        };
+      })(),                               // 7
       origen: datos.origen || ''          // 8
     }
   };
