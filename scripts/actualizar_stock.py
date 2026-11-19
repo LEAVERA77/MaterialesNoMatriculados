@@ -53,6 +53,32 @@ def valor(datos, clave, default=""):
     return default if v is None else v
 
 
+# GitHub limita el client_payload del repository_dispatch a 10 propiedades,
+# por eso los datos del equipo pueden venir planos (dispositivo_id) o anidados
+# en un objeto "dispositivo" ({id, huella, resumen, ua, zona, timestamp}).
+CAMPOS_DISPOSITIVO = {
+    "id": ("dispositivo_id", "id"),
+    "huella": ("dispositivo_huella", "huella"),
+    "resumen": ("dispositivo_resumen", "resumen"),
+    "ua": ("dispositivo_ua", "ua"),
+    "zona": ("zona_horaria", "zona"),
+    "timestamp": ("timestamp_cliente", "timestamp"),
+}
+
+
+def dato_dispositivo(datos, campo, default=""):
+    plano, anidado = CAMPOS_DISPOSITIVO[campo]
+    v = datos.get(plano)
+    if v not in (None, ""):
+        return v
+    disp = datos.get("dispositivo")
+    if isinstance(disp, dict):
+        v = disp.get(anidado)
+        if v not in (None, ""):
+            return v
+    return default
+
+
 def cargar_datos():
     raw = os.environ.get("DATOS", "").strip()
     if not raw:
@@ -158,8 +184,8 @@ def registrar_historial(wb, datos):
     operacion = str(valor(datos, "operacion", "")).upper()
     uso = valor(datos, "uso", "")
     legajo = str(valor(datos, "legajo", "")).strip()
-    dispositivo = valor(datos, "dispositivo_id", "")
-    huella = valor(datos, "dispositivo_huella", "")
+    dispositivo = dato_dispositivo(datos, "id", "")
+    huella = dato_dispositivo(datos, "huella", "")
 
     for item in datos.get("items", []):
         ws.append([
@@ -170,7 +196,7 @@ def registrar_historial(wb, datos):
 
 def registrar_dispositivo(wb, datos):
     """Mantiene una planilla de equipos vistos, para auditar la trazabilidad."""
-    dispositivo = str(valor(datos, "dispositivo_id", "")).strip()
+    dispositivo = str(dato_dispositivo(datos, "id", "")).strip()
     if not dispositivo:
         return
 
@@ -191,12 +217,12 @@ def registrar_dispositivo(wb, datos):
             fila = r
             break
 
-    huella = valor(datos, "dispositivo_huella", "")
-    detalle = valor(datos, "dispositivo_resumen", "") or valor(datos, "dispositivo_ua", "")
+    huella = dato_dispositivo(datos, "huella", "")
+    detalle = dato_dispositivo(datos, "resumen", "") or dato_dispositivo(datos, "ua", "")
     usuario = valor(datos, "usuario", "")
     legajo = str(valor(datos, "legajo", "")).strip()
     operacion = str(valor(datos, "operacion", "")).upper()
-    fecha = valor(datos, "timestamp_cliente", "") or valor(datos, "fecha", "")
+    fecha = dato_dispositivo(datos, "timestamp", "") or valor(datos, "fecha", "")
 
     if fila is None:
         ws.append([dispositivo, huella, detalle, usuario, legajo, f"{fecha} · {operacion}", 1])

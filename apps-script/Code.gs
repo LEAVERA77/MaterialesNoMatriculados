@@ -122,22 +122,27 @@ function guardarEnPlanilla_(datos) {
 /** Dispara la GitHub Action "Actualizar Materiales". */
 function dispararGitHub_(datos) {
   var url = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/dispatches';
+  // IMPORTANTE: GitHub acepta como máximo 10 propiedades en client_payload.
+  // Por eso los datos del equipo van agrupados en "dispositivo" (y no planos).
   var payload = {
     event_type: 'actualizar_stock',
     client_payload: {
-      fecha: datos.fecha,
-      usuario: datos.usuario,
-      legajo: datos.legajo || '',
-      operacion: datos.operacion,
-      uso: datos.uso,
-      items: datos.items,
-      dispositivo_id: datos.dispositivo_id || '',
-      dispositivo_huella: datos.dispositivo_huella || '',
-      dispositivo_resumen: datos.dispositivo_resumen || '',
-      dispositivo_ua: datos.dispositivo_ua || '',
-      zona_horaria: datos.zona_horaria || '',
-      timestamp_cliente: datos.timestamp_cliente || '',
-      origen: datos.origen || ''
+      fecha: datos.fecha,                 // 1
+      usuario: datos.usuario,             // 2
+      legajo: datos.legajo || '',         // 3
+      operacion: datos.operacion,         // 4
+      uso: datos.uso,                     // 5
+      items: datos.items,                 // 6
+      dispositivo: {                      // 7
+        id: datos.dispositivo_id || '',
+        huella: datos.dispositivo_huella || '',
+        resumen: datos.dispositivo_resumen || '',
+        ua: datos.dispositivo_ua || '',
+        pantalla: datos.dispositivo_pantalla || '',
+        zona: datos.zona_horaria || '',
+        timestamp: datos.timestamp_cliente || ''
+      },
+      origen: datos.origen || ''          // 8
     }
   };
 

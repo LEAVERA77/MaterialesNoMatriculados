@@ -108,12 +108,24 @@ Luego **Implementar → Administrar implementaciones → ✏️ → Nueva versi�
 
 > Si preferís no tocar el Apps Script ahora, **todo sigue funcionando igual**: la app envía los campos nuevos y el script viejo los ignora (el Excel se actualiza sin legajo ni dispositivo). Pero para que la trazabilidad quede guardada en el Excel, hay que hacer este paso.
 
+### ⚠️ Límite de GitHub: 10 propiedades en el payload
+
+`repository_dispatch` **rechaza con error 422** cualquier `client_payload` con más de 10 propiedades.
+Por eso `apps-script/Code.gs` envía los datos del equipo **agrupados** en un objeto `dispositivo`
+y `scripts/actualizar_stock.py` acepta los dos formatos (plano `dispositivo_id` o anidado `dispositivo.id`).
+Si agregás campos nuevos, no pases de 10 claves de primer nivel.
+
 ### Paso 3 — Verificar
 
 1. GitHub → **Settings → Pages** → Source: *GitHub Actions* (el workflow de deploy corregido publica `index.html`).
 2. Abrir la URL del sitio: debe aparecer la pantalla **“Identificación de empleado”**.
 3. Probar con un legajo real y su PIN (últimos 4 dígitos).
 4. Hacer un retiro de prueba y revisar el Excel: fila en `Historial` con legajo, ID de dispositivo y huella.
+
+### Ojo con la caché de `raw.githubusercontent`
+
+Después de un movimiento, el Excel tarda **1 a 3 minutos** en reflejarse en el sitio (caché de GitHub).
+El historial del día puede mostrar el último movimiento con algo de retraso; no es un error de la app.
 
 ### Validación del lado del servidor (opcional, recomendada)
 
