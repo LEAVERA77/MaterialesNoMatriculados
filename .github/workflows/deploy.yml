@@ -1,5 +1,9 @@
 name: Deploy to GitHub Pages
 
+# El sitio es estático (index.html en la raíz). No hay build de Node.
+# Este workflow reemplaza al anterior, que intentaba `npm ci` / `npm run build`
+# sobre un proyecto Next.js que ya no existe en el repositorio.
+
 on:
   push:
     branches: [main]
@@ -19,12 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run build
+      - name: Preparar sitio estático
+        run: |
+          mkdir -p dist
+          cp index.html dist/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
