@@ -543,12 +543,14 @@
         <div class="modal-header">
             <h2>Stock en Tiempo Real</h2>
             <div class="header-actions">
+                <button type="button" id="refreshStockBtn" class="lock-btn" title="Volver a leer el Excel"><i class="fas fa-rotate-right"></i> Actualizar</button>
                 <button type="button" id="lockStockBtn" class="lock-btn" title="Volver a pedir la contraseña"><i class="fas fa-lock"></i> Bloquear</button>
                 <button type="button" id="closeStockBtn" aria-label="Cerrar"><i class="fas fa-times"></i></button>
             </div>
         </div>
         <div class="modal-search">
             <input type="text" id="stockSearchInput" placeholder="Buscar material...">
+            <span id="stockUpdatedAt" style="align-self:center; font-size:0.72rem; color:var(--text-muted); white-space:nowrap;"></span>
         </div>
         <div class="modal-body table-responsive" id="printAreaStock">
             <table class="table-stock" id="stockTable">
@@ -597,12 +599,16 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Historial de Movimientos</h2>
-            <button type="button" id="closeHistoryBtn"><i class="fas fa-times"></i></button>
+            <div class="header-actions">
+                <button type="button" id="refreshHistoryBtn" class="lock-btn" title="Volver a leer el Excel"><i class="fas fa-rotate-right"></i> Actualizar</button>
+                <button type="button" id="closeHistoryBtn"><i class="fas fa-times"></i></button>
+            </div>
         </div>
         <div class="modal-search">
             <select id="filterUserSelect">
                 <option value="">Todos los usuarios</option>
             </select>
+            <span id="historyUpdatedAt" style="align-self:center; font-size:0.72rem; color:var(--text-muted); white-space:nowrap;"></span>
         </div>
         <div class="modal-body table-responsive" id="printAreaHistory">
             <table class="table-stock" id="historyTable">
@@ -1342,13 +1348,48 @@ const MATERIALES_RAW = [
             };
         }
 
+        // El Excel se actualiza en GitHub y tarda 1-2 min en propagarse a la CDN,
+        // por eso se pide sin caché y con doble vía (raw + API de GitHub).
+        async function descargarExcelBinario() {
+            const bust = `t=${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            const fuentes = [
+                { url: `https://raw.githubusercontent.com/${ghUser}/${ghRepo}/main/${ghPath}?${bust}`, api: false },
+                { url: `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${ghPath}?ref=main&${bust}`, api: true }
+            ];
+            let ultimoError = null;
+            for (const fuente of fuentes) {
+                try {
+                    const res = await fetch(fuente.url, {
+                        cache: 'no-store',
+                        headers: fuente.api ? { 'Accept': 'application/vnd.github.raw' } : {}
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    let buffer = await res.arrayBuffer();
+                    const inicio = new TextDecoder().decode(buffer.slice(0, 24)).trimStart();
+                    if (inicio.startsWith('{')) {
+                        // La API respondió en JSON base64
+                        const json = JSON.parse(new TextDecoder().decode(buffer));
+                        const bin = atob(String(json.content || '').replace(/\s/g, ''));
+                        const bytes = new Uint8Array(bin.length);
+                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                        buffer = bytes.buffer;
+                    }
+                    return buffer;
+                } catch (e) {
+                    ultimoError = e;
+                }
+            }
+            throw new Error('No se pudo leer el archivo del repositorio' + (ultimoError ? ' (' + ultimoError.message + ')' : '') + '.');
+        }
+
         async function downloadAndParseExcel() {
-            const url = `https://raw.githubusercontent.com/${ghUser}/${ghRepo}/main/${ghPath}?t=${Date.now()}`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("No se pudo leer el archivo. Asegúrese de que el repositorio sea público.");
-            const arrayBuffer = await res.arrayBuffer();
+            const arrayBuffer = await descargarExcelBinario();
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
             return { workbook };
+        }
+
+        function marcaDeActualizacion(el) {
+            if (el) el.textContent = 'Datos al ' + new Date().toLocaleTimeString('es-AR');
         }
 
         // Hoja opcional "Empleados": LEGAJO | NOMBRE | PIN (o hash) | ACTIVO
@@ -1493,9 +1534,10 @@ const MATERIALES_RAW = [
                     throw new Error('El servidor no registró la operación: ' + (respuesta.motivo || 'error desconocido'));
                 }
 
-                showToast(`✅ ${operacion.toUpperCase()} procesado.`);
-                
+                showToast(`✅ ${operacion.toUpperCase()} procesado. Verificando el registro en el Excel...`);
+
                 mostrarComprobante(datos, operacion);
+                confirmarRegistro(datos, operacion);
 
                 usoTextarea.value = '';
                 itemsContainer.innerHTML = '';
@@ -1512,6 +1554,34 @@ const MATERIALES_RAW = [
                 modeBadge.textContent = sesion ? 'Esperando acción' : 'Identifíquese con su legajo';
                 modeBadge.style.color = 'var(--text-muted)';
             }
+        }
+
+        // Después de operar, el Excel tarda 1-2 min en reflejarse (GitHub Actions + CDN).
+        // Se consulta en segundo plano y se avisa cuando el movimiento ya está guardado.
+        async function confirmarRegistro(datos, operacion) {
+            const intentos = 8;
+            const espera = 20000;
+            for (let i = 0; i < intentos; i++) {
+                await new Promise(r => setTimeout(r, espera));
+                try {
+                    const { workbook } = await downloadAndParseExcel();
+                    if (!workbook.SheetNames.includes('Historial')) continue;
+                    const filas = XLSX.utils.sheet_to_json(workbook.Sheets['Historial'], { header: 1 });
+                    for (let f = filas.length - 1; f >= Math.max(1, filas.length - 12); f--) {
+                        const row = filas[f];
+                        if (!row) continue;
+                        const coincide = String(row[6] || '') === String(datos.legajo) &&
+                            String(row[2] || '').toUpperCase() === operacion.toUpperCase() &&
+                            datos.items.some(it => String(it.material).trim().toLowerCase() === String(row[3] || '').trim().toLowerCase());
+                        if (coincide) {
+                            showToast(`✅ Movimiento confirmado en el Excel (stock actualizado).`);
+                            return true;
+                        }
+                    }
+                } catch (e) { /* reintenta */ }
+            }
+            showToast('⚠ El servidor aceptó el movimiento, pero todavía no aparece en el Excel. Revisá el Historial en 1-2 minutos.', true);
+            return false;
         }
 
         window.devolucionRapida = async function(usuario, material, cantidad, uso, legajo) {
@@ -1678,6 +1748,7 @@ const MATERIALES_RAW = [
                     }
                 }
                 renderStockTable(stockDataGlobal);
+                marcaDeActualizacion(document.getElementById('stockUpdatedAt'));
             } catch (error) {
                 stockTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger-color);">Error: ${error.message}</td></tr>`;
             }
@@ -1733,6 +1804,7 @@ const MATERIALES_RAW = [
                     usuariosUnicos.map(u => `<option value="${u}">${u}</option>`).join('');
 
                 renderHistoryTable(historyDataGlobal);
+                marcaDeActualizacion(document.getElementById('historyUpdatedAt'));
             } catch (error) {
                 historyTableBody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--danger-color);">Error: ${error.message}</td></tr>`;
             }
@@ -1854,6 +1926,8 @@ const MATERIALES_RAW = [
         verStockBtn.addEventListener('click', pedirContrasenaStock);
         verHistorialBtn.addEventListener('click', mostrarHistorial);
         
+        document.getElementById('refreshStockBtn').addEventListener('click', () => { mostrarStock(); });
+        document.getElementById('refreshHistoryBtn').addEventListener('click', () => { mostrarHistorial(); });
         closeStockBtn.addEventListener('click', () => { stockModal.style.display = 'none'; });
         closeHistoryBtn.addEventListener('click', () => { historyModal.style.display = 'none'; });
 
