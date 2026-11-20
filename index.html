@@ -1481,7 +1481,10 @@ const MATERIALES_RAW = [
                     '⚠ El PIN funciona en este equipo, pero todavía no se sincronizó. Si no podés entrar desde otro equipo, avisá a un administrador.'
                 );
             } catch (e) {
-                loginError.textContent = e.message;
+                const motivo = String(e.message || '');
+                loginError.textContent = /rechaz|payload|inválid|invalid/i.test(motivo)
+                    ? 'No se pudo guardar el PIN: el servidor todavía no está actualizado. Avisá al administrador de materiales (falta pegar el nuevo Code.gs en Apps Script).'
+                    : 'No se pudo guardar el PIN (' + (motivo || 'sin conexión') + '). Revisá la conexión e intentá de nuevo.';
             } finally {
                 btn.textContent = 'Guardar PIN e ingresar';
                 document.getElementById('btnCrearPin').disabled = false;
