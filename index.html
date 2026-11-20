@@ -513,10 +513,11 @@
             <button type="button" id="closeAdminBtn" aria-label="Cerrar"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;">
+            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.5rem;">
                 Solo los administradores pueden restablecer el PIN de un empleado. Al restablecerlo,
                 el empleado vuelve a ingresar con su legajo y define un PIN nuevo.
             </p>
+            <p id="adminAlcance" style="font-size:0.78rem; color:#1e3a8a; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:0.5rem 0.7rem; margin-bottom:1rem;"></p>
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end; margin-bottom:1.25rem;">
                 <div class="field-group" style="flex:1 1 200px;">
                     <label for="adminLegajoInput">Legajo del empleado</label>
@@ -773,7 +774,17 @@
         //    ADMIN_LEGAJOS = únicos que pueden restablecer el PIN de otro.
         // ==========================================
 
-        const ADMIN_LEGAJOS = ['10246', '12684', '16088'];  // VERA, MAIER, MATEO
+        // Permisos para restablecer el PIN de otro empleado.
+        //   alcance 'todos'  → puede restablecer cualquier PIN (incluidos otros administradores)
+        //   alcance 'excepto'→ puede restablecer, salvo los legajos de "protegidos"
+        // VERA (10246) NO puede tocar el PIN de MAIER (12684) ni de MATEO (16088):
+        // solo MAIER y MATEO pueden restablecer todos los PINs.
+        const ADMIN_PINES = {
+            '12684': { nombre: 'MAIER, FERNANDO',          alcance: 'todos',  protegidos: [] },
+            '16088': { nombre: 'MATEO, LUCAS JUAN MARCOS', alcance: 'todos',  protegidos: [] },
+            '10246': { nombre: 'VERA, LEANDRO FEDERICO',   alcance: 'excepto', protegidos: ['12684', '16088'] }
+        };
+        const ADMIN_LEGAJOS = Object.keys(ADMIN_PINES);
 
         const LEGAJOS = [
             // legajo y apellido/nombre. El PIN NO se precarga: lo crea cada empleado.
@@ -1225,7 +1236,21 @@ const MATERIALES_RAW = [
         }
 
         function esAdmin(legajo) {
-            return ADMIN_LEGAJOS.includes(normalizarLegajo(legajo));
+            return Object.prototype.hasOwnProperty.call(ADMIN_PINES, normalizarLegajo(legajo));
+        }
+
+        // ¿El administrador puede restablecer el PIN de ese empleado?
+        function puedeResetearPin(adminLegajo, legajoObjetivo) {
+            const admin = ADMIN_PINES[normalizarLegajo(adminLegajo)];
+            if (!admin) return false;
+            const objetivo = normalizarLegajo(legajoObjetivo);
+            if (admin.alcance === 'todos') return true;
+            return !admin.protegidos.includes(objetivo);
+        }
+
+        function motivoNoReset(adminLegajo, legajoObjetivo) {
+            if (!ADMIN_PINES[normalizarLegajo(adminLegajo)]) return 'Tu legajo no está autorizado para restablecer PIN.';
+            return `Solo ${ADMIN_PINES['12684'].nombre} o ${ADMIN_PINES['16088'].nombre} pueden restablecer el PIN del legajo ${normalizarLegajo(legajoObjetivo)}.`;
         }
 
         // Espera a que la lista de la hoja "Empleados" esté leída antes de validar
@@ -1639,21 +1664,29 @@ const MATERIALES_RAW = [
                 .filter(e => !q || normalizarLegajo(e.legajo).toLowerCase().includes(q) || String(e.nombre).toLowerCase().includes(q))
                 .sort((a, b) => normalizarLegajo(a.legajo).localeCompare(normalizarLegajo(b.legajo)));
 
+            const adminActual = sesion ? normalizarLegajo(sesion.legajo) : '';
             document.getElementById('adminTableBody').innerHTML = lista.map(e => {
                 const estado = estadoPin(e);
+                const legajoFila = normalizarLegajo(e.legajo);
                 const chip = estado.tipo === 'sin'
                     ? '<span class="stamp-chip" style="background:#fef3c7;color:#92400e;">Sin PIN</span>'
                     : '<span class="stamp-chip" style="background:#ecfdf5;color:#047857;">PIN activo</span>';
                 const inactivo = e.activo === false ? ' <small style="color:var(--danger-color)">(inactivo)</small>' : '';
-                return `<tr>
-                    <td>${normalizarLegajo(e.legajo)}</td>
-                    <td>${e.nombre}${inactivo}</td>
-                    <td>${chip}</td>
-                    <td style="text-align:right;">
-                        <button type="button" class="btn btn-secondary btn-sm" data-legajo="${normalizarLegajo(e.legajo)}" data-accion="reset">
+                const esAdminFila = esAdmin(legajoFila) ? ' <span class="stamp-chip" style="background:#eff6ff;color:#1e3a8a;">admin</span>' : '';
+                const permitido = puedeResetearPin(adminActual, legajoFila);
+                const boton = permitido
+                    ? `<button type="button" class="btn btn-secondary btn-sm" data-legajo="${legajoFila}" data-accion="reset">
                             <i class="fas fa-key"></i> Restablecer
-                        </button>
-                    </td>
+                       </button>`
+                    : `<button type="button" class="btn btn-secondary btn-sm" disabled data-accion="protegido"
+                            title="${motivoNoReset(adminActual, legajoFila)}" style="opacity:0.55; cursor:not-allowed;">
+                            <i class="fas fa-lock"></i> Protegido
+                       </button>`;
+                return `<tr>
+                    <td>${legajoFila}</td>
+                    <td>${e.nombre}${esAdminFila}${inactivo}</td>
+                    <td>${chip}</td>
+                    <td style="text-align:right;">${boton}</td>
                 </tr>`;
             }).join('') || '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Sin resultados.</td></tr>';
 
@@ -1666,6 +1699,11 @@ const MATERIALES_RAW = [
             if (!sesion || !esAdmin(sesion.legajo)) { showToast('Solo los administradores pueden gestionar PIN.', true); return; }
             adminModal.style.display = 'flex';
             mostrarMensajeAdmin('', false);
+            const alcance = document.getElementById('adminAlcance');
+            const info = ADMIN_PINES[normalizarLegajo(sesion.legajo)];
+            alcance.textContent = info && info.alcance === 'todos'
+                ? 'Tu usuario puede restablecer el PIN de cualquier empleado, incluidos los demás administradores.'
+                : 'Tu usuario puede restablecer PINs de empleados, pero NO de MAIER (12684) ni MATEO (16088): esos PINs solo los restablecen ellos.';
             document.getElementById('adminLegajoInput').value = '';
             document.getElementById('adminBuscar').value = '';
             await listaEmpleados();
@@ -1675,6 +1713,11 @@ const MATERIALES_RAW = [
         async function restablecerPin(legajo) {
             if (!sesion || !esAdmin(sesion.legajo)) { showToast('Solo los administradores pueden restablecer PIN.', true); return; }
             const objetivo = normalizarLegajo(legajo);
+            if (!puedeResetearPin(sesion.legajo, objetivo)) {
+                mostrarMensajeAdmin(motivoNoReset(sesion.legajo, objetivo), true);
+                showToast('Ese PIN está protegido.', true);
+                return;
+            }
             await listaEmpleados();
             const emp = buscarEmpleado(objetivo);
             if (!emp) { mostrarMensajeAdmin('No existe el legajo ' + objetivo + '.', true); return; }

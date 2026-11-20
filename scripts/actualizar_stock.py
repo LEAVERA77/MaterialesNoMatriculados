@@ -22,7 +22,8 @@ Hoja "Empleados" (PIN autogestionado por el empleado):
 
 Acciones de PIN (llegan con "accion" en el payload):
     pin_establecer  → el propio empleado define su PIN en el primer ingreso
-    pin_resetear    → solo lo pueden pedir los legajos de ADMIN_LEGAJOS
+    pin_resetear    → solo lo pueden pedir los administradores de ADMIN_PINES,
+                      y VERA (10246) nunca puede restablecer el PIN de MAIER ni MATEO
 
 Hoja "Pines" (auditoría de altas y restablecimientos):
     A Fecha | B Accion | C Legajo | D Empleado | E Admin | F Dispositivo | G Huella | H Hash (8)
@@ -51,8 +52,27 @@ ENCABEZADO_PINES = [
     "Fecha", "Accion", "Legajo", "Empleado", "Administrador",
     "Dispositivo", "Huella", "Hash (primeros 8)",
 ]
-# Únicos legajos habilitados para restablecer el PIN de otro empleado.
-ADMIN_LEGAJOS = ("10246", "12684", "16088")
+# Permisos para restablecer el PIN de otro empleado.
+#   "todos"  → puede restablecer cualquier PIN, incluidos otros administradores.
+#   "excepto"→ puede restablecer, salvo los legajos listados en "protegidos".
+# VERA (10246) no puede tocar el PIN de MAIER (12684) ni de MATEO (16088):
+# solo MAIER y MATEO pueden restablecer todos los PINs.
+ADMIN_PINES = {
+    "12684": {"nombre": "MAIER, FERNANDO", "alcance": "todos", "protegidos": ()},
+    "16088": {"nombre": "MATEO, LUCAS JUAN MARCOS", "alcance": "todos", "protegidos": ()},
+    "10246": {"nombre": "VERA, LEANDRO FEDERICO", "alcance": "excepto", "protegidos": ("12684", "16088")},
+}
+ADMIN_LEGAJOS = tuple(ADMIN_PINES.keys())
+
+
+def puede_resetear(admin, legajo):
+    """Misma regla que aplica la web, pero acá no se puede saltear."""
+    info = ADMIN_PINES.get(admin)
+    if not info:
+        return False
+    if info["alcance"] == "todos":
+        return True
+    return legajo not in info["protegidos"]
 ENCABEZADO_DISPOSITIVOS = [
     "ID Dispositivo", "Huella", "Detalle", "Ultimo usuario", "Ultimo legajo",
     "Ultima operacion", "Operaciones",
@@ -352,10 +372,15 @@ def resetear_pin(wb, datos):
     admin = str(valor(datos, "admin_legajo", "")).strip()
     legajo = str(valor(datos, "legajo", "")).strip()
 
-    if admin not in ADMIN_LEGAJOS:
+    if admin not in ADMIN_PINES:
         fatal(f"El legajo {admin or '(vacío)'} no está autorizado para restablecer PIN.")
     if not legajo:
         fatal("El restablecimiento de PIN no informa el legajo del empleado.")
+    if not puede_resetear(admin, legajo):
+        fatal(
+            f"El administrador {admin} ({ADMIN_PINES[admin]['nombre']}) NO puede restablecer "
+            f"el PIN del legajo {legajo}: solo 12684 (MAIER) y 16088 (MATEO) pueden hacerlo."
+        )
     if legajo == admin:
         log("  Aviso: el administrador restablece su propio PIN.")
 
