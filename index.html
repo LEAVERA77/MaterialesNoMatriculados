@@ -1166,7 +1166,7 @@ const MATERIALES_RAW = [
                     <div class="suggestions-box" id="sug-${rowId}"></div>
                     <input type="hidden" class="material-hidden" value="">
                 </div>
-                <div class="qty-col"><input type="number" class="qty-input" placeholder="Cant." min="0.01" step="0.01" value=""></div>
+                <div class="qty-col"><input type="number" class="qty-input" placeholder="Cant." min="0.01" step="any" inputmode="decimal" value=""></div>
                 <div class="unit-col"><input type="text" class="unit-input" placeholder="Unidad" readonly></div>
                 <div class="action-col"><button type="button" class="btn-icon remove-item"><i class="fas fa-trash"></i></button></div>
             `;
@@ -1200,6 +1200,12 @@ const MATERIALES_RAW = [
             });
 
             materialInput.addEventListener('blur', () => setTimeout(() => suggestionsBox.style.display = 'none', 200));
+
+            // No se permiten cantidades negativas: se descarta el signo al escribir/pegar
+            const qtyEl = rowDiv.querySelector('.qty-input');
+            qtyEl.addEventListener('input', () => {
+                if (qtyEl.value.indexOf('-') === 0) qtyEl.value = qtyEl.value.replace(/^-+/, '');
+            });
 
             rowDiv.querySelector('.remove-item').addEventListener('click', function() {
                 if (itemsContainer.children.length <= MIN_ITEMS) { showToast('Debe haber al menos un material.', true); return; }
@@ -1346,6 +1352,7 @@ const MATERIALES_RAW = [
                         if (esperado === '' ? celda === '' : celda.endsWith(esperado)) {
                             // refresca la lista local con lo último del Excel
                             cargaEmpleados = cargarEmpleadosDesdeExcel();
+                            cargarStockActual();
                             showToast(mensajeOk);
                             return true;
                         }
@@ -1774,14 +1781,21 @@ const MATERIALES_RAW = [
         // ==========================================
         // 5. VALIDACIÓN Y ARMADO DE LA OPERACIÓN
         // ==========================================
-        function validateAndCollect() {
+        function validateAndCollect(operacion) {
             if (!sesion) { abrirLogin('Tenés que identificarte con tu legajo para operar.'); return null; }
             if (!fechaInput.value) { showToast('La fecha es obligatoria.', true); return null; }
             if (!usoTextarea.value.trim()) { showToast('Describa el uso.', true); return null; }
 
+            const esRetiro = operacion === 'retiro';
             const rows = itemsContainer.querySelectorAll('.item-row');
             const items = [];
             let valid = true;
+            let primerError = '';
+
+            const marcar = (input) => {
+                input.classList.add('error-shake');
+                setTimeout(() => input.classList.remove('error-shake'), 400);
+            };
 
             rows.forEach(row => {
                 const materialInput = row.querySelector('.material-input');
@@ -1790,17 +1804,63 @@ const MATERIALES_RAW = [
                 const unitInput = row.querySelector('.unit-input');
                 const materialName = hiddenInput.value || materialInput.value.trim();
 
-                if (!materialName) { materialInput.classList.add('error-shake'); setTimeout(() => materialInput.classList.remove('error-shake'), 400); valid = false; }
-                if (!qtyInput.value || parseFloat(qtyInput.value) <= 0) { qtyInput.classList.add('error-shake'); setTimeout(() => qtyInput.classList.remove('error-shake'), 400); valid = false; }
-                if (!unitInput.value) { unitInput.classList.add('error-shake'); setTimeout(() => unitInput.classList.remove('error-shake'), 400); valid = false; }
+                if (!materialName) { marcar(materialInput); valid = false; if (!primerError) primerError = 'Elegí el material de la lista de sugerencias.'; return; }
+                if (!unitInput.value) { marcar(unitInput); valid = false; if (!primerError) primerError = 'Falta la unidad del material.'; return; }
 
-                if (materialName && qtyInput.value && parseFloat(qtyInput.value) > 0) {
-                    items.push({ material: materialName, cantidad: parseFloat(qtyInput.value), unidad: unitInput.value });
+                // --- Cantidad: negativa, cero, vacía o no numérica ---
+                const problema = validarCantidad(qtyInput.value, unitInput.value);
+                if (problema) {
+                    marcar(qtyInput);
+                    valid = false;
+                    if (!primerError) primerError = `${materialName}: ${problema}`;
+                    return;
                 }
+
+                const cantidad = Number(String(qtyInput.value).replace(',', '.'));
+
+                // --- Stock disponible (solo para retiros) ---
+                if (esRetiro && stockActualListo) {
+                    const clave = claveMaterial(materialName);
+                    if (Object.prototype.hasOwnProperty.call(stockActual, clave)) {
+                        const disponible = stockActual[clave];
+                        if (cantidad > disponible) {
+                            marcar(qtyInput);
+                            valid = false;
+                            if (!primerError) {
+                                primerError = disponible <= 0
+                                    ? `${materialName}: no hay stock disponible (0 ${unitInput.value}).`
+                                    : `${materialName}: pedís ${formatearCantidad(cantidad)} ${unitInput.value} y el stock es ${formatearCantidad(disponible)} ${unitInput.value}.`;
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                items.push({ material: materialName, cantidad: cantidad, unidad: unitInput.value });
             });
 
-            if (!valid) { showToast('Complete todos los materiales.', true); return null; }
+            if (!valid) {
+                showToast(primerError || 'Revisá los materiales cargados.', true);
+                return null;
+            }
             if (items.length === 0) { showToast('Agregue al menos un material válido.', true); return null; }
+
+            // --- Suma de ítems repetidos: el total no puede superar el stock ---
+            if (esRetiro && stockActualListo) {
+                const totales = {};
+                items.forEach(i => {
+                    const clave = claveMaterial(i.material);
+                    totales[clave] = (totales[clave] || 0) + i.cantidad;
+                });
+                for (const clave in totales) {
+                    if (!Object.prototype.hasOwnProperty.call(stockActual, clave)) continue;
+                    if (totales[clave] > stockActual[clave]) {
+                        const nombre = items.find(i => claveMaterial(i.material) === clave).material;
+                        showToast(`${nombre}: el total pedido (${formatearCantidad(totales[clave])}) supera el stock (${formatearCantidad(stockActual[clave])}).`, true);
+                        return null;
+                    }
+                }
+            }
 
             return {
                 fecha: fechaInput.value,
@@ -1961,7 +2021,7 @@ const MATERIALES_RAW = [
         }
 
         async function procesarOperacion(operacion) {
-            const datos = validateAndCollect();
+            const datos = validateAndCollect(operacion);
             if (!datos) return;
 
             loader.style.display = 'block';
@@ -2021,6 +2081,7 @@ const MATERIALES_RAW = [
         // Después de operar, el Excel tarda 1-2 min en reflejarse (GitHub Actions + CDN).
         // Se consulta en segundo plano y se avisa cuando el movimiento ya está guardado.
         async function confirmarRegistro(datos, operacion) {
+            setTimeout(() => { cargarStockActual(); }, 60000);   // el Excel tarda 1-2 min
             const intentos = 8;
             const espera = 20000;
             for (let i = 0; i < intentos; i++) {
@@ -2185,6 +2246,61 @@ const MATERIALES_RAW = [
         document.getElementById('cancelStockPassBtn').addEventListener('click', cerrarModalContrasena);
         document.getElementById('lockStockBtn').addEventListener('click', bloquearStock);
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && stockPassModal.style.display === 'flex') cerrarModalContrasena(); });
+
+        // ==========================================
+        // STOCK VIGENTE (para avisar antes de enviar)
+        // Se lee del Excel del repositorio y se refresca con el botón
+        // "Actualizar" y después de cada operación confirmada.
+        // ==========================================
+        let stockActual = {};          // { "nombre en minusculas": cantidad }
+        let stockActualListo = false;
+
+        function claveMaterial(nombre) {
+            return String(nombre || '').trim().toLowerCase();
+        }
+
+        async function cargarStockActual() {
+            try {
+                const { workbook } = await downloadAndParseExcel();
+                const hoja = workbook.SheetNames.includes('Materiales') ? workbook.Sheets['Materiales'] : workbook.Sheets[workbook.SheetNames[0]];
+                const filas = XLSX.utils.sheet_to_json(hoja, { header: 1 });
+                const mapa = {};
+                for (let i = 0; i < filas.length; i++) {
+                    const row = filas[i] || [];
+                    const nombre = String(row[0] === undefined || row[0] === null ? '' : row[0]).trim();
+                    if (!nombre) continue;
+                    const cant = Number(row[3]);
+                    if (!Number.isFinite(cant)) continue;
+                    mapa[claveMaterial(nombre)] = cant;
+                }
+                if (Object.keys(mapa).length) {
+                    stockActual = mapa;
+                    stockActualListo = true;
+                }
+                return stockActualListo;
+            } catch (e) {
+                console.warn('[ENERSA] No se pudo leer el stock para validar; se valida en el servidor.', e.message);
+                return false;
+            }
+        }
+
+        function formatearCantidad(n) {
+            const num = Number(n);
+            if (!Number.isFinite(num)) return String(n);
+            return Number.isInteger(num) ? String(num) : num.toFixed(2).replace('.', ',');
+        }
+
+        // Devuelve null si la cantidad es válida; si no, el motivo.
+        function validarCantidad(texto, unidad) {
+            const crudo = String(texto === undefined || texto === null ? '' : texto).trim();
+            if (!crudo) return 'Ingresá la cantidad.';
+            if (!/^-?\d*[.,]?\d+$/.test(crudo.replace(/\s/g, ''))) return 'La cantidad tiene que ser un número.';
+            const valor = Number(crudo.replace(',', '.'));
+            if (!Number.isFinite(valor)) return 'La cantidad tiene que ser un número.';
+            if (valor < 0) return 'La cantidad no puede ser negativa.';
+            if (valor === 0) return 'La cantidad tiene que ser mayor que cero.';
+            return null;
+        }
 
         async function mostrarStock() {
             if (!stockDesbloqueado) { pedirContrasenaStock(); return; }
@@ -2376,6 +2492,7 @@ const MATERIALES_RAW = [
 
         // Trae legajos/PIN administrados desde la hoja "Empleados" (si existe)
         cargaEmpleados = cargarEmpleadosDesdeExcel();
+        cargarStockActual();   // stock vigente para avisar antes de enviar
 
         addItemBtn.addEventListener('click', () => {
             if (!sesion) { abrirLogin('Identifícate con tu legajo para operar.'); return; }
@@ -2388,7 +2505,10 @@ const MATERIALES_RAW = [
         verStockBtn.addEventListener('click', pedirContrasenaStock);
         verHistorialBtn.addEventListener('click', mostrarHistorial);
         
-        document.getElementById('refreshStockBtn').addEventListener('click', () => { mostrarStock(); });
+        document.getElementById('refreshStockBtn').addEventListener('click', async () => {
+            await cargarStockActual();
+            mostrarStock();
+        });
         document.getElementById('refreshHistoryBtn').addEventListener('click', () => { mostrarHistorial(); });
         closeStockBtn.addEventListener('click', () => { stockModal.style.display = 'none'; });
         closeHistoryBtn.addEventListener('click', () => { historyModal.style.display = 'none'; });
