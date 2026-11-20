@@ -8,7 +8,11 @@
  *   2) Si viene un movimiento (retiro / devolución), dispara la GitHub Action
  *      que actualiza listado_materiales_ENERSA.xlsx, enviando también el
  *      LEGAJO y los datos del DISPOSITIVO (ID + huella SHA-256).
- *   3) Si viene {accion:'login'}, valida legajo + PIN contra la hoja
+ *   3) Si viene {accion:'pin_establecer'} (alta del PIN en el primer ingreso)
+ *      o {accion:'pin_resetear'} (restablecimiento por un administrador),
+ *      dispara la misma Action para que se escriba en la hoja "Empleados".
+ *      El PIN nunca viaja en claro: se envía SAL + HASH SHA-256.
+ *   4) Si viene {accion:'login'}, valida legajo + PIN contra la hoja
  *      "Empleados" y responde si las credenciales son válidas. Esto permite
  *      activar la validación del lado del servidor en la web
  *      (const USAR_VALIDACION_SERVIDOR = true).
@@ -32,6 +36,13 @@ function doPost(e) {
     // --- 1. Validación de identidad (opcional, del lado del servidor) ---
     if (datos.accion === 'login') {
       return json_(validarLogin_(datos.legajo, datos.pin));
+    }
+
+    // --- 1b. Alta / restablecimiento de PIN (el Excel lo escribe la Action) ---
+    if (datos.accion === 'pin_establecer' || datos.accion === 'pin_resetear') {
+      if (!datos.legajo) return json_({ ok: false, motivo: 'falta_legajo' });
+      var okPin = dispararGitHub_(datos);
+      return json_({ ok: okPin, accion: datos.accion, legajo: datos.legajo });
     }
 
     // --- 2. Movimiento de materiales ---
@@ -81,7 +92,11 @@ function validarLogin_(legajo, pin) {
 
     var guardado = String(f[2] === undefined || f[2] === null ? '' : f[2]).trim();
     var valido = false;
-    if (/^[a-f0-9]{64}$/i.test(guardado)) {
+    if (guardado.indexOf('$') > 0) {
+      // Formato actual: "SAL$HASH_SHA256" (hash de SAL|LEGAJO|PIN)
+      var partes = guardado.split('$');
+      valido = (hashSha256_(partes[0] + '|' + legajoNorm + '|' + pinNorm) === String(partes[1]).toLowerCase());
+    } else if (/^[a-f0-9]{64}$/i.test(guardado)) {
       valido = (hashSha256_(pinNorm) === guardado.toLowerCase());
     } else if (guardado) {
       valido = (guardado === pinNorm) || (Number(guardado) === Number(pinNorm));
@@ -150,6 +165,28 @@ function dispararGitHub_(datos) {
       origen: datos.origen || ''          // 8
     }
   };
+
+  // Las acciones de PIN usan su propio conjunto de claves (siempre <= 10).
+  if (datos.accion === 'pin_establecer' || datos.accion === 'pin_resetear') {
+    payload.client_payload = {
+      accion: datos.accion,                         // 1
+      legajo: datos.legajo || '',                   // 2
+      sal: datos.sal || '',                         // 3
+      pin_hash: datos.pin_hash || '',               // 4
+      admin_legajo: datos.admin_legajo || '',       // 5
+      usuario: datos.usuario || '',                 // 6
+      operacion: datos.operacion || '',             // 7
+      fecha: datos.fecha || new Date().toString(),  // 8
+      dispositivo: (function () {
+        var d = datos.dispositivo || {};
+        return {
+          id: d.id || '', huella: d.huella || '', resumen: d.resumen || '',
+          ua: d.ua || '', pantalla: d.pantalla || '', zona: d.zona || '',
+          timestamp: d.timestamp || ''
+        };
+      })()                                          // 9
+    };
+  }
 
   var res = UrlFetchApp.fetch(url, {
     method: 'post',

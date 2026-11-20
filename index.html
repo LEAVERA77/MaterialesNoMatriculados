@@ -380,6 +380,12 @@
         }
         #pinInput { letter-spacing: 0.4em; text-align: center; font-weight: 600; }
         .login-error { color: var(--danger-color); font-size: 0.82rem; min-height: 1.1em; font-weight: 500; }
+        .login-who {
+            display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+            background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-sm);
+            padding: 0.6rem 0.75rem; font-size: 0.85rem; font-weight: 600; color: #1e3a8a;
+        }
+        .login-who small { font-weight: 400; font-size: 0.72rem; color: #3b5bab; }
         .login-hint { font-size: 0.75rem; color: var(--text-muted); background: var(--bg-color); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); padding: 0.6rem 0.75rem; line-height: 1.45; }
         .login-foot {
             display: flex;
@@ -416,7 +422,8 @@
 <body>
 
 <!-- ============================================================
-     IDENTIFICACIÓN DEL EMPLEADO (obligatoria, por legajo)
+     IDENTIFICACIÓN DEL EMPLEADO
+     Paso 1: legajo  →  Paso 2: PIN (o creación del PIN la primera vez)
      ============================================================ -->
 <div class="modal-overlay" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
     <div class="login-card">
@@ -426,33 +433,113 @@
             <p>María Grande · Identificación de empleado</p>
         </div>
         <form class="login-body" id="loginForm" autocomplete="off">
-            <div>
+
+            <!-- PASO 1: legajo -->
+            <div id="pasoLegajo">
                 <label for="legajoInput">Legajo</label>
                 <input type="text" id="legajoInput" inputmode="numeric" pattern="[0-9]*" maxlength="8"
-                       placeholder="00000" autocomplete="off" autocapitalize="off" spellcheck="false"
-                       aria-describedby="loginError">
+                       placeholder="00000" autocomplete="off" autocapitalize="off" spellcheck="false">
+                <button type="submit" class="btn btn-primary" id="btnLegajo" style="justify-content:center; margin-top:0.9rem;">
+                    <i class="fas fa-arrow-right"></i> <span id="btnLegajoText">Continuar</span>
+                </button>
             </div>
-            <div>
-                <label for="pinInput">PIN personal</label>
+
+            <!-- PASO 2a: PIN existente -->
+            <div id="pasoPin" style="display:none;">
+                <div class="login-who">
+                    <i class="fas fa-user-check"></i>
+                    <span id="pinNombre">—</span>
+                    <small>Legajo <span id="pinLegajoMostrar">—</span></small>
+                </div>
+                <label for="pinInput">Tu PIN</label>
                 <div class="pin-wrap">
                     <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="8"
-                           placeholder="••••" autocomplete="off" autocapitalize="off" spellcheck="false"
-                           aria-describedby="loginError">
+                           placeholder="••••" autocomplete="off" autocapitalize="off" spellcheck="false">
                     <button type="button" class="pass-toggle" id="pinToggle" aria-label="Mostrar PIN"><i class="fas fa-eye"></i></button>
                 </div>
+                <button type="submit" class="btn btn-primary" style="justify-content:center; margin-top:0.9rem;">
+                    <i class="fas fa-right-to-bracket"></i> Ingresar
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="volverLegajo" style="justify-content:center; margin-top:0.5rem; width:100%;">
+                    <i class="fas fa-arrow-left"></i> Usar otro legajo
+                </button>
+                <div class="login-hint">
+                    ¿Olvidaste tu PIN? Pedile a un administrador que te lo restablezca:
+                    <strong>VERA, MAIER o MATEO</strong>.
+                </div>
             </div>
+
+            <!-- PASO 2b: crear PIN (primer ingreso o PIN restablecido) -->
+            <div id="pasoCrearPin" style="display:none;">
+                <div class="login-who">
+                    <i class="fas fa-user-plus"></i>
+                    <span id="crearNombre">—</span>
+                    <small>Legajo <span id="crearLegajoMostrar">—</span></small>
+                </div>
+                <div class="login-hint" style="margin-bottom:0.9rem;">
+                    <strong>Primer ingreso:</strong> elegí tu PIN personal (4 a 8 dígitos). Lo vas a usar siempre junto a tu legajo.
+                </div>
+                <label for="pinNuevo">Nuevo PIN</label>
+                <div class="pin-wrap">
+                    <input type="password" id="pinNuevo" inputmode="numeric" pattern="[0-9]*" maxlength="8"
+                           placeholder="••••" autocomplete="off" autocapitalize="off" spellcheck="false">
+                    <button type="button" class="pass-toggle" id="pinNuevoToggle" aria-label="Mostrar PIN"><i class="fas fa-eye"></i></button>
+                </div>
+                <label for="pinNuevo2" style="margin-top:0.7rem;">Repetí el PIN</label>
+                <input type="password" id="pinNuevo2" inputmode="numeric" pattern="[0-9]*" maxlength="8"
+                       placeholder="••••" autocomplete="off" autocapitalize="off" spellcheck="false">
+                <button type="submit" class="btn btn-primary" id="btnCrearPin" style="justify-content:center; margin-top:0.9rem;">
+                    <i class="fas fa-floppy-disk"></i> <span id="btnCrearPinText">Guardar PIN e ingresar</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="volverLegajo2" style="justify-content:center; margin-top:0.5rem; width:100%;">
+                    <i class="fas fa-arrow-left"></i> Usar otro legajo
+                </button>
+            </div>
+
             <div class="login-error" id="loginError" role="alert"></div>
-            <button type="submit" class="btn btn-primary" id="loginBtn" style="justify-content:center;">
-                <i class="fas fa-right-to-bracket"></i> <span id="loginBtnText">Validar legajo</span>
-            </button>
-            <div class="login-hint">
-                <strong>PIN inicial:</strong> los últimos 4 dígitos de tu legajo.
-                Si no lo recordás, pedile al responsable de materiales que lo restablezca.
-            </div>
         </form>
         <div class="login-foot">
             <i class="fas fa-fingerprint"></i>
             <span>Equipo registrado: <span id="loginDeviceId">—</span> · Huella <span id="loginDeviceFp">—</span></span>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Administración de PIN (solo administradores) -->
+<div class="modal-overlay" id="adminModal">
+    <div class="modal-content" style="max-width: 620px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-user-shield"></i> Administración de PIN</h2>
+            <button type="button" id="closeAdminBtn" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;">
+                Solo los administradores pueden restablecer el PIN de un empleado. Al restablecerlo,
+                el empleado vuelve a ingresar con su legajo y define un PIN nuevo.
+            </p>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end; margin-bottom:1.25rem;">
+                <div class="field-group" style="flex:1 1 200px;">
+                    <label for="adminLegajoInput">Legajo del empleado</label>
+                    <input type="text" id="adminLegajoInput" inputmode="numeric" placeholder="00000" autocomplete="off">
+                </div>
+                <button type="button" class="btn btn-primary" id="resetPinBtn"><i class="fas fa-key"></i> Restablecer PIN</button>
+            </div>
+            <div class="login-error" id="adminMensaje" role="status" style="min-height:1.1em;"></div>
+            <div class="modal-search" style="padding:0.75rem 0; background:transparent; border:none;">
+                <input type="text" id="adminBuscar" placeholder="Buscar empleado por legajo o nombre...">
+                <button type="button" class="btn btn-secondary btn-sm" id="adminRefreshBtn"><i class="fas fa-rotate-right"></i> Actualizar</button>
+            </div>
+            <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+                <table class="table-stock" id="adminTable">
+                    <thead>
+                        <tr><th>Legajo</th><th>Apellido y nombre</th><th>PIN</th><th></th></tr>
+                    </thead>
+                    <tbody id="adminTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="closeAdminBtn2">Cerrar</button>
         </div>
     </div>
 </div>
@@ -476,6 +563,9 @@
             <button type="button" class="device-chip" id="deviceChip" title="Ver datos del dispositivo desde el que se opera">
                 <i class="fas fa-fingerprint"></i>
                 <span id="deviceChipText">—</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="adminPinBtn" style="display:none;" title="Restablecer el PIN de un empleado">
+                <i class="fas fa-user-shield"></i> PINs
             </button>
             <button type="button" class="btn btn-secondary btn-sm" id="cambiarUsuarioBtn" title="Cerrar sesión e identificarse con otro legajo">
                 <i class="fas fa-arrows-rotate"></i> Cambiar
@@ -677,38 +767,43 @@
         const CLAVE_DEVICE = 'enersa_device_id_v1';
 
         // ==========================================
-        // 2. LEGAJOS  (PIN inicial = últimos 4 dígitos del legajo)
-        //    Se puede administrar también desde la hoja "Empleados" del Excel.
+        // 2. LEGAJOS Y ADMINISTRADORES
+        //    El PIN ya NO viene precargado: cada empleado lo crea en su primer
+        //    ingreso. El valor vigente se lee de la hoja "Empleados" del Excel.
+        //    ADMIN_LEGAJOS = únicos que pueden restablecer el PIN de otro.
         // ==========================================
-                const LEGAJOS = [
-            // legajo, apellido y nombre, hash SHA-256 del PIN (PIN inicial = últimos 4 dígitos del legajo)
-            { legajo: '10246', nombre: 'VERA, LEANDRO FEDERICO', pinHash: 'ce44e96ecfd0004515dd4a73f52b742e680ea8410952f513b28472aae600cc3f' },
-            { legajo: '11123', nombre: 'ECKERT, ENZO EMANUEL', pinHash: '4739ee3bd29e4f415da8ba9298a087e0fdc9c61378420ba8fbbab298bd74c4df' },
-            { legajo: '11166', nombre: 'OLGIATTI, DUILIO JOAQUIN', pinHash: '7d86b48acdec123e6c4bdb0031bfa9be7471d5728494270685a2227316ba3e8a' },
-            { legajo: '11188', nombre: 'CIARROCA, ENZO SIMON', pinHash: 'b62764dc19af7e6a2fd312662a2fe207d273a883e64bf87bd0ec755007649e6c' },
-            { legajo: '11339', nombre: 'CESARIO, LEANDRO IVAN', pinHash: '462b01670e50875a9df97c18e87cd367dbe7fbd6f32783be20883747e37d5af6' },
-            { legajo: '11422', nombre: 'CIARROCCA, MANUEL SANTIAGO', pinHash: 'fd53efd8940f305f79e212dc2e0a557d23eab8f2f60fbf219e19e3351b68e732' },
-            { legajo: '11440', nombre: 'GRILLE, EMILIANO GABRIEL', pinHash: 'a4ff3ad278c7b0575a8e32ae08eebfb327e37762cb1a2caa793c431b9b2ca2c6' },
-            { legajo: '12065', nombre: 'NARVAEZ, RAUL JORGE', pinHash: '899fe985e893b124dff8820c977e7dd623078c36161ae3cfe6f75c0c819a8157' },
-            { legajo: '12318', nombre: 'VALLE, ROBERTO OMAR', pinHash: 'edbf8a7109ded44c55e03f440684289eedf39505da2be57d550acb7a8858220f' },
-            { legajo: '12320', nombre: 'GOMEZ, ALEJANDRO DAVID', pinHash: 'bc3f8c15936c27ffae4c58506586013fb3375e486258cd0997ffd5f82f1de8b2' },
-            { legajo: '12322', nombre: 'ALTAMIRANO, RODOLFO HERNAN', pinHash: '63c5cd559eaf56798fe5361fcff2c40386f79d8f13548d9ef28b1dc3eafb0ecf' },
-            { legajo: '12323', nombre: 'GOMEZ, GERARDO ISIDORO', pinHash: '61503690505f84b144e6ac89124540a3eb8d22e77db76500984cfc50a1d8776e' },
-            { legajo: '12324', nombre: 'RETAMAR, CARLOS HERNAN', pinHash: '8b01315e403fc6491b9913a552cf8ff5ee954c14ad3207898db1ccf318cd9ba3' },
-            { legajo: '12325', nombre: 'NUÑEZ, HECTOR EDUARDO', pinHash: '675fa5692e307231f466088b86e84624c4e4a52ae49ec1ee320e878121450b2e' },
-            { legajo: '12663', nombre: 'MONZÓN, HUGO CESAR', pinHash: '352a4f750446467c7aa84dab0f0d6aa496e3f3e27a970b3011fc0027a41ffc1b' },
-            { legajo: '12684', nombre: 'MAIER, FERNANDO', pinHash: '85c7fe9319004e487cdde0f895d742b3be1b0b474708fd7162e404f32f373629' },
-            { legajo: '13810', nombre: 'ISAAC, LEANDRO', pinHash: '24ed3fa31a50402dc751c033074f08dd636f59697b3c62ff179017ea588ebb72' },
-            { legajo: '13870', nombre: 'GIMENEZ, ROSENDO EMANUEL', pinHash: '0228374d12ee995cdeff8e25d819990f80d40c8773321fafe4ce1572c7df29af' },
-            { legajo: '16088', nombre: 'MATEO, LUCAS JUAN MARCOS', pinHash: 'ec95dcd9feca7769f1989de44ec3bcce59d419fdafc750503a537b8052cbf3b5' },
-            { legajo: '17902', nombre: 'ALBARENQUE, FERNANDO', pinHash: '7b721c50ff0220bb9376a328f3aafc0c56e1590ff644ec01bd8a43d75307c2c4' },
-            { legajo: '18286', nombre: 'MIGNOLA, LUIS GABRIEL', pinHash: '6592e596d7db6dd03867efd74f16d3f2d8e32c7376aabc768d1d146380a036ae' },
-            { legajo: '18287', nombre: 'FERNANDEZ, ARIEL ROBERTO FABIAN', pinHash: '7f7af6137ce9bdf5be21a5855fb0134b9ff84cd77d39c4569ff221e2769ff384' },
-            { legajo: '18288', nombre: 'BATTISTI, ELIAS IMANOL', pinHash: '398a15bc9bdc4db26d1d21dda9bf0e6e018ae388020e0e1398f5ecc9789c18e0' },
-            { legajo: '18289', nombre: 'VARELA, LUIS ALBERTO', pinHash: 'b1085a6893111a20747e97d0a831afdee971ea3edf39c713a87fa1c2b1b78b0f' },
-            { legajo: '18406', nombre: 'LARA, DIEGO VALENTIN', pinHash: '2fe8980f829f6bc345a8b467a01c39cbfcbc605126f9208894660e6b9aad9cca' },
+
+        const ADMIN_LEGAJOS = ['10246', '12684', '16088'];  // VERA, MAIER, MATEO
+
+        const LEGAJOS = [
+            // legajo y apellido/nombre. El PIN NO se precarga: lo crea cada empleado.
+            { legajo: '10246', nombre: 'VERA, LEANDRO FEDERICO' },
+            { legajo: '11123', nombre: 'ECKERT, ENZO EMANUEL' },
+            { legajo: '11166', nombre: 'OLGIATTI, DUILIO JOAQUIN' },
+            { legajo: '11188', nombre: 'CIARROCA, ENZO SIMON' },
+            { legajo: '11339', nombre: 'CESARIO, LEANDRO IVAN' },
+            { legajo: '11422', nombre: 'CIARROCCA, MANUEL SANTIAGO' },
+            { legajo: '11440', nombre: 'GRILLE, EMILIANO GABRIEL' },
+            { legajo: '12065', nombre: 'NARVAEZ, RAUL JORGE' },
+            { legajo: '12318', nombre: 'VALLE, ROBERTO OMAR' },
+            { legajo: '12320', nombre: 'GOMEZ, ALEJANDRO DAVID' },
+            { legajo: '12322', nombre: 'ALTAMIRANO, RODOLFO HERNAN' },
+            { legajo: '12323', nombre: 'GOMEZ, GERARDO ISIDORO' },
+            { legajo: '12324', nombre: 'RETAMAR, CARLOS HERNAN' },
+            { legajo: '12325', nombre: 'NUÑEZ, HECTOR EDUARDO' },
+            { legajo: '12663', nombre: 'MONZÓN, HUGO CESAR' },
+            { legajo: '12684', nombre: 'MAIER, FERNANDO' },
+            { legajo: '13810', nombre: 'ISAAC, LEANDRO' },
+            { legajo: '13870', nombre: 'GIMENEZ, ROSENDO EMANUEL' },
+            { legajo: '16088', nombre: 'MATEO, LUCAS JUAN MARCOS' },
+            { legajo: '17902', nombre: 'ALBARENQUE, FERNANDO' },
+            { legajo: '18286', nombre: 'MIGNOLA, LUIS GABRIEL' },
+            { legajo: '18287', nombre: 'FERNANDEZ, ARIEL ROBERTO FABIAN' },
+            { legajo: '18288', nombre: 'BATTISTI, ELIAS IMANOL' },
+            { legajo: '18289', nombre: 'VARELA, LUIS ALBERTO' },
+            { legajo: '18406', nombre: 'LARA, DIEGO VALENTIN' },
         ];
-        let empleados = LEGAJOS.map(e => ({...e, activo: true, alta: 'código'}));
+        let empleados = LEGAJOS.map(e => ({legajo: e.legajo, nombre: e.nombre, activo: true, alta: 'código'}));
 
         let sesion = null;
         let stockDataGlobal = [];
@@ -1107,10 +1202,18 @@ const MATERIALES_RAW = [
         }
 
         // ==========================================
-        // 4. IDENTIFICACIÓN POR LEGAJO
+        // 4. IDENTIFICACIÓN: LEGAJO + PIN AUTOGESTIONADO
+        //    - Primer ingreso: el empleado crea su PIN.
+        //    - Ingresos siguientes: legajo + PIN.
+        //    - PIN olvidado: solo un administrador lo restablece.
         // ==========================================
         let intentosFallidos = 0;
         let bloqueadoHasta = 0;
+        let pasoActual = 'legajo';
+        let empleadoActual = null;
+        let cargaEmpleados = null;
+
+        const CLAVE_PIN_PENDIENTE = 'enersa_pin_pendiente_v1';
 
         function normalizarLegajo(v) {
             return String(v || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
@@ -1121,23 +1224,278 @@ const MATERIALES_RAW = [
             return empleados.find(e => normalizarLegajo(e.legajo) === l) || null;
         }
 
-        // Un PIN puede estar guardado como hash SHA-256 (64 hex) o como texto plano.
-        function pinCoincide(pin, empleado) {
+        function esAdmin(legajo) {
+            return ADMIN_LEGAJOS.includes(normalizarLegajo(legajo));
+        }
+
+        // Espera a que la lista de la hoja "Empleados" esté leída antes de validar
+        function listaEmpleados() {
+            if (!cargaEmpleados) cargaEmpleados = cargarEmpleadosDesdeExcel();
+            return cargaEmpleados;
+        }
+
+        function crearSal() {
+            return hexAleatorio(4);
+        }
+
+        function hashPin(sal, legajo, pin) {
+            return sha256(`${sal}|${normalizarLegajo(legajo)}|${String(pin).trim()}`);
+        }
+
+        function pinPendienteLocal(legajo) {
+            try {
+                const raw = localStorage.getItem(CLAVE_PIN_PENDIENTE);
+                if (!raw) return null;
+                const p = JSON.parse(raw);
+                if (!p || normalizarLegajo(p.legajo) !== normalizarLegajo(legajo)) return null;
+                if (Date.now() - (p.ts || 0) > 7 * 24 * 3600 * 1000) return null;
+                return p;
+            } catch (e) { return null; }
+        }
+
+        function guardarPinPendienteLocal(legajo, sal, hash) {
+            try {
+                localStorage.setItem(CLAVE_PIN_PENDIENTE, JSON.stringify({ legajo: normalizarLegajo(legajo), sal, hash, ts: Date.now() }));
+            } catch (e) {}
+        }
+
+        function borrarPinPendienteLocal() {
+            try { localStorage.removeItem(CLAVE_PIN_PENDIENTE); } catch (e) {}
+        }
+
+        // Estado del PIN de un empleado según la hoja Empleados
+        // Formato en la celda PIN: "SAL$HASH" | hash de 64 hex (formato viejo) | texto plano (formato viejo) | vacío
+        function estadoPin(emp) {
+            const valor = emp && emp.pin !== undefined && emp.pin !== null ? String(emp.pin).trim() : '';
+            if (valor.includes('$')) {
+                const partes = valor.split('$');
+                if (partes.length === 2 && partes[1]) return { tipo: 'sal', sal: partes[0], hash: partes[1].toLowerCase(), origen: 'excel' };
+            }
+            if (/^[a-f0-9]{64}$/i.test(valor)) return { tipo: 'hash', hash: valor.toLowerCase(), origen: 'excel' };
+            if (valor) return { tipo: 'plano', valor: valor, origen: 'excel' };
+            const pend = pinPendienteLocal(emp.legajo);
+            if (pend) return { tipo: 'sal', sal: pend.sal, hash: pend.hash, origen: 'local' };
+            return { tipo: 'sin' };
+        }
+
+        function pinCoincide(pin, emp) {
             const p = String(pin || '').trim();
             if (!p) return false;
-            if (empleado.pinHash) return sha256(p) === String(empleado.pinHash).toLowerCase();
-            if (empleado.pin !== undefined && empleado.pin !== null) {
-                const guardado = String(empleado.pin).trim();
-                if (guardado === p) return true;
-                // Tolerancia: si Excel guardó el PIN como número (0246 -> 246)
-                if (/^[0-9]+$/.test(guardado) && /^[0-9]+$/.test(p)) {
-                    return Number(guardado) === Number(p);
-                }
+            const estado = estadoPin(emp);
+            if (estado.tipo === 'sin') return false;
+            if (estado.tipo === 'sal') return hashPin(estado.sal, emp.legajo, p) === estado.hash;
+            if (estado.tipo === 'hash') return sha256(p) === estado.hash;
+            if (estado.tipo === 'plano') {
+                if (estado.valor === p) return true;
+                if (/^[0-9]+$/.test(estado.valor) && /^[0-9]+$/.test(p)) return Number(estado.valor) === Number(p);
                 return false;
             }
             return false;
         }
 
+        // ---- Envío de la acción de PIN al backend (mismo canal que los movimientos) ----
+        async function enviarAccionPin(payload) {
+            const cuerpo = Object.assign({ fecha: new Date().toLocaleString('es-AR') }, payload, { dispositivo: datosDispositivo() });
+            const res = await fetch(urlGoogle, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(cuerpo)
+            });
+            if (!res.ok) throw new Error('No se pudo conectar con el servidor.');
+            return leerRespuestaBackend(res);
+        }
+
+        // Verifica en segundo plano que el cambio llegó al Excel (tarda 1-2 min)
+        async function confirmarPinEnExcel(legajo, hashEsperado, mensajeOk, mensajeAviso) {
+            const esperado = String(hashEsperado || '').toLowerCase();
+            for (let i = 0; i < 8; i++) {
+                await new Promise(r => setTimeout(r, 20000));
+                try {
+                    const { workbook } = await downloadAndParseExcel();
+                    if (!workbook.SheetNames.includes('Empleados')) continue;
+                    const filas = XLSX.utils.sheet_to_json(workbook.Sheets['Empleados'], { header: 1 });
+                    for (let f = 1; f < filas.length; f++) {
+                        const row = filas[f] || [];
+                        if (normalizarLegajo(row[0]) !== normalizarLegajo(legajo)) continue;
+                        const celda = String(row[2] === undefined || row[2] === null ? '' : row[2]).trim().toLowerCase();
+                        if (esperado === '' ? celda === '' : celda.endsWith(esperado)) {
+                            // refresca la lista local con lo último del Excel
+                            cargaEmpleados = cargarEmpleadosDesdeExcel();
+                            showToast(mensajeOk);
+                            return true;
+                        }
+                        break;
+                    }
+                } catch (e) { /* reintenta */ }
+            }
+            showToast(mensajeAviso, true);
+            return false;
+        }
+
+        // ---- Control de la pantalla ----
+        function mostrarPaso(paso) {
+            pasoActual = paso;
+            document.getElementById('pasoLegajo').style.display = paso === 'legajo' ? 'block' : 'none';
+            document.getElementById('pasoPin').style.display = paso === 'pin' ? 'block' : 'none';
+            document.getElementById('pasoCrearPin').style.display = paso === 'crear' ? 'block' : 'none';
+            loginError.textContent = '';
+            if (paso === 'legajo') setTimeout(() => legajoInput.focus(), 80);
+            if (paso === 'pin') setTimeout(() => pinInput.focus(), 80);
+            if (paso === 'crear') setTimeout(() => document.getElementById('pinNuevo').focus(), 80);
+        }
+
+        function abrirLogin(mensaje) {
+            loginError.textContent = mensaje || '';
+            legajoInput.value = '';
+            pinInput.value = '';
+            document.getElementById('pinNuevo').value = '';
+            document.getElementById('pinNuevo2').value = '';
+            empleadoActual = null;
+            loginModal.style.display = 'flex';
+            mostrarPaso('legajo');
+            if (mensaje) loginError.textContent = mensaje;
+        }
+
+        function mostrarEmpleadoEnPaso(emp) {
+            document.getElementById('pinNombre').textContent = emp.nombre;
+            document.getElementById('pinLegajoMostrar').textContent = normalizarLegajo(emp.legajo);
+            document.getElementById('crearNombre').textContent = emp.nombre;
+            document.getElementById('crearLegajoMostrar').textContent = normalizarLegajo(emp.legajo);
+        }
+
+        // ---- Verificación del legajo (paso 1) ----
+        async function continuarConLegajo() {
+            const legajo = normalizarLegajo(legajoInput.value);
+            if (!legajo) { loginError.textContent = 'Ingresá tu número de legajo.'; legajoInput.focus(); return; }
+
+            document.getElementById('btnLegajo').disabled = true;
+            document.getElementById('btnLegajoText').textContent = 'Verificando...';
+
+            await listaEmpleados();
+            const emp = buscarEmpleado(legajo);
+
+            document.getElementById('btnLegajo').disabled = false;
+            document.getElementById('btnLegajoText').textContent = 'Continuar';
+
+            if (!emp) {
+                loginError.textContent = 'No encontramos ese legajo. Verificalo o consultá con el responsable de materiales.';
+                return;
+            }
+            if (emp.activo === false) {
+                loginError.textContent = 'El legajo está inactivo. Consultá con el responsable de materiales.';
+                return;
+            }
+
+            empleadoActual = emp;
+            mostrarEmpleadoEnPaso(emp);
+
+            const estado = estadoPin(emp);
+            if (estado.tipo === 'sin') {
+                mostrarPaso('crear');
+            } else {
+                pinInput.value = '';
+                mostrarPaso('pin');
+                if (estado.origen === 'local') {
+                    loginError.textContent = '';
+                }
+            }
+        }
+
+        // ---- Ingreso con PIN existente (paso 2a) ----
+        async function ingresarConPin() {
+            if (!empleadoActual) { mostrarPaso('legajo'); return; }
+            if (Date.now() < bloqueadoHasta) {
+                loginError.textContent = `Demasiados intentos. Esperá ${Math.ceil((bloqueadoHasta - Date.now()) / 1000)} s.`;
+                return;
+            }
+            const pin = pinInput.value.trim();
+            if (!pin) { loginError.textContent = 'Ingresá tu PIN.'; pinInput.focus(); return; }
+
+            if (!pinCoincide(pin, empleadoActual)) {
+                intentosFallidos++;
+                if (intentosFallidos >= MAX_INTENTOS) {
+                    bloqueadoHasta = Date.now() + 60000;
+                    intentosFallidos = 0;
+                    loginError.textContent = 'Demasiados intentos fallidos. Esperá 1 minuto.';
+                } else {
+                    loginError.textContent = 'PIN incorrecto.' + (intentosFallidos >= 3 ? ` (${MAX_INTENTOS - intentosFallidos} intentos restantes)` : '');
+                }
+                pinInput.value = '';
+                pinInput.focus();
+                return;
+            }
+
+            // Validación opcional del lado del servidor (solo si está activada)
+            const srv = await validarEnServidor(empleadoActual.legajo, pin);
+            if (srv.soportado && !srv.ok) {
+                loginError.textContent = 'El servidor rechazó las credenciales.';
+                return;
+            }
+
+            intentosFallidos = 0;
+            finalizarIngreso(empleadoActual);
+        }
+
+        // ---- Creación del PIN (primer ingreso o tras un restablecimiento) ----
+        async function crearPin() {
+            if (!empleadoActual) { mostrarPaso('legajo'); return; }
+            const pin1 = document.getElementById('pinNuevo').value.trim();
+            const pin2 = document.getElementById('pinNuevo2').value.trim();
+
+            if (!/^[0-9]{4,8}$/.test(pin1)) {
+                loginError.textContent = 'El PIN debe tener entre 4 y 8 dígitos.';
+                document.getElementById('pinNuevo').focus();
+                return;
+            }
+            if (pin1 !== pin2) {
+                loginError.textContent = 'Los PIN no coinciden.';
+                document.getElementById('pinNuevo2').focus();
+                return;
+            }
+
+            const sal = crearSal();
+            const hash = hashPin(sal, empleadoActual.legajo, pin1);
+            const btn = document.getElementById('btnCrearPinText');
+            btn.textContent = 'Guardando...';
+            document.getElementById('btnCrearPin').disabled = true;
+
+            try {
+                const resp = await enviarAccionPin({
+                    accion: 'pin_establecer',
+                    legajo: normalizarLegajo(empleadoActual.legajo),
+                    sal: sal,
+                    pin_hash: hash,
+                    usuario: empleadoActual.nombre,
+                    operacion: 'PIN_ESTABLECIDO'
+                });
+                if (resp.ok === false) throw new Error(resp.motivo || 'El servidor rechazó el alta del PIN.');
+
+                guardarPinPendienteLocal(empleadoActual.legajo, sal, hash);
+                // Refleja el PIN en memoria para poder usar la sesión ya mismo
+                empleadoActual.pin = `${sal}$${hash}`;
+                finalizarIngreso(empleadoActual);
+                showToast('✅ PIN creado. Guardándolo en el servidor...');
+                confirmarPinEnExcel(
+                    empleadoActual.legajo, hash,
+                    '✅ Tu PIN quedó guardado. La próxima vez ingresá con legajo + PIN.',
+                    '⚠ El PIN funciona en este equipo, pero todavía no se sincronizó. Si no podés entrar desde otro equipo, avisá a un administrador.'
+                );
+            } catch (e) {
+                loginError.textContent = e.message;
+            } finally {
+                btn.textContent = 'Guardar PIN e ingresar';
+                document.getElementById('btnCrearPin').disabled = false;
+            }
+        }
+
+        function finalizarIngreso(emp) {
+            guardarSesion({ legajo: normalizarLegajo(emp.legajo), nombre: emp.nombre });
+            loginModal.style.display = 'none';
+            aplicarSesionUI();
+            showToast(`✅ Bienvenido/a ${emp.nombre} (Leg. ${normalizarLegajo(emp.legajo)})`);
+        }
+
+        // ---- Validación opcional en el servidor (Apps Script) ----
         async function validarEnServidor(legajo, pin) {
             if (!USAR_VALIDACION_SERVIDOR) return { soportado: false };
             try {
@@ -1159,29 +1517,12 @@ const MATERIALES_RAW = [
             }
         }
 
-        async function autenticar(legajo, pin) {
-            const emp = buscarEmpleado(legajo);
-            if (!emp) {
-                return { ok: false, motivo: 'No encontramos ese legajo. Verificalo o consultá con el responsable de materiales.' };
-            }
-            if (emp.activo === false || emp.activo === 'NO') {
-                return { ok: false, motivo: 'El legajo está inactivo. Consultá con el responsable de materiales.' };
-            }
-            if (!pinCoincide(pin, emp)) {
-                return { ok: false, motivo: 'PIN incorrecto.' };
-            }
-            // Validación opcional en servidor (solo si está activada)
-            const srv = await validarEnServidor(normalizarLegajo(legajo), String(pin || '').trim());
-            if (srv.soportado && !srv.ok) {
-                return { ok: false, motivo: 'El servidor rechazó las credenciales.' };
-            }
-            return { ok: true, legajo: normalizarLegajo(emp.legajo), nombre: emp.nombre };
-        }
-
+        // ---- Sesión ----
         function guardarSesion(datos) {
             sesion = {
                 legajo: datos.legajo,
                 nombre: datos.nombre,
+                admin: esAdmin(datos.legajo),
                 inicio: Date.now(),
                 vence: Date.now() + HORAS_SESION * 3600 * 1000,
                 dispositivo_id: DISPOSITIVO.id,
@@ -1207,6 +1548,7 @@ const MATERIALES_RAW = [
             usuarioDisplay.value = '';
             retiroBtn.disabled = true;
             devolucionBtn.disabled = true;
+            document.getElementById('adminPinBtn').style.display = 'none';
             modeBadge.textContent = 'Identifíquese con su legajo';
             modeBadge.style.color = 'var(--text-muted)';
             abrirLogin(mensaje);
@@ -1221,20 +1563,8 @@ const MATERIALES_RAW = [
             sessionValidez.textContent = restante > 0 ? `sesión válida ~${restante} h` : 'sesión por vencer';
             usuarioDisplay.value = `${sesion.nombre} — Leg. ${sesion.legajo}`;
             deviceChipText.textContent = `${DISPOSITIVO.id} · ${DISPOSITIVO.huellaCorta}`;
-            retiroBtn.disabled = false;
-            devolucionBtn.disabled = false;
-            modeBadge.textContent = 'Esperando acción';
-            modeBadge.style.color = 'var(--text-muted)';
+            document.getElementById('adminPinBtn').style.display = esAdmin(sesion.legajo) ? 'inline-flex' : 'none';
             aplicarBloqueoUI();
-        }
-
-        function abrirLogin(mensaje) {
-            loginError.textContent = mensaje || '';
-            legajoInput.value = '';
-            pinInput.value = '';
-            pinInput.type = 'password';
-            loginModal.style.display = 'flex';
-            setTimeout(() => legajoInput.focus(), 80);
         }
 
         // Bloquea o desbloquea la UI según haya sesión
@@ -1248,65 +1578,152 @@ const MATERIALES_RAW = [
             itemsContainer.querySelectorAll('input').forEach(i => i.disabled = !tiene);
         }
 
+        // ---- Submit del formulario según el paso ----
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (Date.now() < bloqueadoHasta) {
-                loginError.textContent = `Demasiados intentos. Espere ${Math.ceil((bloqueadoHasta - Date.now()) / 1000)} s.`;
-                return;
-            }
-            const legajo = normalizarLegajo(legajoInput.value);
-            const pin = pinInput.value.trim();
-            if (!legajo) { loginError.textContent = 'Ingrese su número de legajo.'; legajoInput.focus(); return; }
-            if (!pin) { loginError.textContent = 'Ingrese su PIN.'; pinInput.focus(); return; }
-
-            loginBtn.disabled = true;
-            loginBtnText.textContent = 'Validando...';
-            loginError.textContent = '';
-
-            const res = await autenticar(legajo, pin);
-
-            loginBtn.disabled = false;
-            loginBtnText.textContent = 'Validar legajo';
-
-            if (!res.ok) {
-                intentosFallidos++;
-                if (intentosFallidos >= MAX_INTENTOS) {
-                    bloqueadoHasta = Date.now() + 60000;
-                    intentosFallidos = 0;
-                    loginError.textContent = 'Demasiados intentos fallidos. Espere 1 minuto.';
-                } else {
-                    loginError.textContent = res.motivo + (intentosFallidos >= 3 ? ` (${MAX_INTENTOS - intentosFallidos} intentos restantes)` : '');
-                }
-                pinInput.value = '';
-                pinInput.focus();
-                return;
-            }
-
-            intentosFallidos = 0;
-            guardarSesion(res);
-            loginModal.style.display = 'none';
-            aplicarSesionUI();
-            showToast(`✅ Bienvenido/a ${res.nombre} (Leg. ${res.legajo})`);
+            if (pasoActual === 'legajo') await continuarConLegajo();
+            else if (pasoActual === 'pin') await ingresarConPin();
+            else if (pasoActual === 'crear') await crearPin();
         });
+
+        document.getElementById('volverLegajo').addEventListener('click', () => { empleadoActual = null; mostrarPaso('legajo'); });
+        document.getElementById('volverLegajo2').addEventListener('click', () => { empleadoActual = null; mostrarPaso('legajo'); });
 
         pinInput.addEventListener('input', () => { loginError.textContent = ''; });
         legajoInput.addEventListener('input', () => {
             loginError.textContent = '';
             legajoInput.value = legajoInput.value.replace(/[^0-9A-Za-z]/g, '');
         });
-        document.getElementById('pinToggle').addEventListener('click', function() {
-            const visible = pinInput.type === 'text';
-            pinInput.type = visible ? 'password' : 'text';
-            this.innerHTML = visible ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-            this.setAttribute('aria-label', visible ? 'Mostrar PIN' : 'Ocultar PIN');
-            pinInput.focus();
+        ['pinNuevo', 'pinNuevo2'].forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('input', () => {
+                loginError.textContent = '';
+                el.value = el.value.replace(/[^0-9]/g, '');
+            });
         });
+
+        function alternarVisibilidad(input, boton) {
+            const visible = input.type === 'text';
+            input.type = visible ? 'password' : 'text';
+            boton.innerHTML = visible ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            boton.setAttribute('aria-label', visible ? 'Mostrar PIN' : 'Ocultar PIN');
+            input.focus();
+        }
+        document.getElementById('pinToggle').addEventListener('click', function() { alternarVisibilidad(pinInput, this); });
+        document.getElementById('pinNuevoToggle').addEventListener('click', function() { alternarVisibilidad(document.getElementById('pinNuevo'), this); });
+
         document.getElementById('cambiarUsuarioBtn').addEventListener('click', () => {
             if (confirm('¿Cerrar la sesión actual y identificarse con otro legajo?')) cerrarSesion('');
         });
         document.getElementById('deviceChip').addEventListener('click', mostrarDetalleDispositivo);
         document.getElementById('closeDeviceBtn').addEventListener('click', () => deviceModal.style.display = 'none');
         document.getElementById('closeDeviceBtn2').addEventListener('click', () => deviceModal.style.display = 'none');
+
+        // ==========================================
+        // 4B. ADMINISTRACIÓN DE PIN (solo 3 administradores)
+        // ==========================================
+        const adminModal = document.getElementById('adminModal');
+        const adminMensaje = document.getElementById('adminMensaje');
+
+        function mostrarMensajeAdmin(texto, esError) {
+            adminMensaje.textContent = texto || '';
+            adminMensaje.style.color = esError ? 'var(--danger-color)' : 'var(--success-color)';
+        }
+
+        function renderAdminTabla(filtro) {
+            const q = String(filtro || '').toLowerCase().trim();
+            const lista = empleados
+                .filter(e => !q || normalizarLegajo(e.legajo).toLowerCase().includes(q) || String(e.nombre).toLowerCase().includes(q))
+                .sort((a, b) => normalizarLegajo(a.legajo).localeCompare(normalizarLegajo(b.legajo)));
+
+            document.getElementById('adminTableBody').innerHTML = lista.map(e => {
+                const estado = estadoPin(e);
+                const chip = estado.tipo === 'sin'
+                    ? '<span class="stamp-chip" style="background:#fef3c7;color:#92400e;">Sin PIN</span>'
+                    : '<span class="stamp-chip" style="background:#ecfdf5;color:#047857;">PIN activo</span>';
+                const inactivo = e.activo === false ? ' <small style="color:var(--danger-color)">(inactivo)</small>' : '';
+                return `<tr>
+                    <td>${normalizarLegajo(e.legajo)}</td>
+                    <td>${e.nombre}${inactivo}</td>
+                    <td>${chip}</td>
+                    <td style="text-align:right;">
+                        <button type="button" class="btn btn-secondary btn-sm" data-legajo="${normalizarLegajo(e.legajo)}" data-accion="reset">
+                            <i class="fas fa-key"></i> Restablecer
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Sin resultados.</td></tr>';
+
+            document.getElementById('adminTableBody').querySelectorAll('button[data-accion="reset"]').forEach(btn => {
+                btn.addEventListener('click', () => restablecerPin(btn.dataset.legajo));
+            });
+        }
+
+        async function abrirAdmin() {
+            if (!sesion || !esAdmin(sesion.legajo)) { showToast('Solo los administradores pueden gestionar PIN.', true); return; }
+            adminModal.style.display = 'flex';
+            mostrarMensajeAdmin('', false);
+            document.getElementById('adminLegajoInput').value = '';
+            document.getElementById('adminBuscar').value = '';
+            await listaEmpleados();
+            renderAdminTabla('');
+        }
+
+        async function restablecerPin(legajo) {
+            if (!sesion || !esAdmin(sesion.legajo)) { showToast('Solo los administradores pueden restablecer PIN.', true); return; }
+            const objetivo = normalizarLegajo(legajo);
+            await listaEmpleados();
+            const emp = buscarEmpleado(objetivo);
+            if (!emp) { mostrarMensajeAdmin('No existe el legajo ' + objetivo + '.', true); return; }
+            if (!confirm(`¿Restablecer el PIN de ${emp.nombre} (legajo ${objetivo})?\n\nEl empleado va a poder ingresar con su legajo y definir un PIN nuevo.`)) return;
+
+            mostrarMensajeAdmin('Enviando pedido...', false);
+            try {
+                const resp = await enviarAccionPin({
+                    accion: 'pin_resetear',
+                    admin_legajo: normalizarLegajo(sesion.legajo),
+                    legajo: objetivo,
+                    usuario: 'ADMIN · ' + sesion.nombre,
+                    operacion: 'PIN_RESTABLECIDO'
+                });
+                if (resp.ok === false) throw new Error(resp.motivo || 'El servidor rechazó el pedido.');
+
+                // Refleja el cambio en memoria para que la tabla lo muestre al instante
+                emp.pin = '';
+                const pend = pinPendienteLocal(objetivo);
+                if (pend) borrarPinPendienteLocal();
+                renderAdminTabla(document.getElementById('adminBuscar').value);
+                mostrarMensajeAdmin(`Pedido enviado para ${emp.nombre}. Tarda 1-2 minutos en aplicarse.`, false);
+                showToast('✅ PIN restablecido para ' + emp.nombre);
+
+                confirmarPinEnExcel(
+                    objetivo, '',
+                    `✅ Listo: el PIN de ${emp.nombre} quedó restablecido.`,
+                    '⚠ El pedido se envió pero todavía no se sincronizó. Verificá en 1-2 minutos.'
+                );
+            } catch (e) {
+                mostrarMensajeAdmin(e.message, true);
+            }
+        }
+
+        document.getElementById('resetPinBtn').addEventListener('click', () => {
+            const legajo = document.getElementById('adminLegajoInput').value;
+            if (!normalizarLegajo(legajo)) { mostrarMensajeAdmin('Ingresá el legajo del empleado.', true); return; }
+            restablecerPin(legajo);
+        });
+        document.getElementById('adminLegajoInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('resetPinBtn').click(); }
+        });
+        document.getElementById('adminBuscar').addEventListener('input', (e) => renderAdminTabla(e.target.value));
+        document.getElementById('adminRefreshBtn').addEventListener('click', async () => {
+            cargaEmpleados = cargarEmpleadosDesdeExcel();
+            await cargaEmpleados;
+            renderAdminTabla(document.getElementById('adminBuscar').value);
+            showToast('Lista actualizada.');
+        });
+        document.getElementById('closeAdminBtn').addEventListener('click', () => adminModal.style.display = 'none');
+        document.getElementById('closeAdminBtn2').addEventListener('click', () => adminModal.style.display = 'none');
+        document.getElementById('adminPinBtn').addEventListener('click', abrirAdmin);
 
         // ==========================================
         // 5. VALIDACIÓN Y ARMADO DE LA OPERACIÓN
@@ -1414,8 +1831,7 @@ const MATERIALES_RAW = [
                         activo: !(activoRaw === 'NO' || activoRaw === 'FALSE' || activoRaw === '0'),
                         alta: 'excel'
                     };
-                    if (/^[a-f0-9]{64}$/i.test(pinRaw)) registro.pinHash = pinRaw.toLowerCase();
-                    else if (pinRaw) registro.pin = pinRaw;
+                    if (pinRaw) registro.pin = pinRaw;   // "SAL$HASH" | hash viejo | texto plano
                     const idx = empleados.findIndex(e => normalizarLegajo(e.legajo) === legajo);
                     if (idx >= 0) empleados[idx] = Object.assign({}, empleados[idx], registro);
                     else { empleados.push(registro); sumados++; }
@@ -1913,7 +2329,7 @@ const MATERIALES_RAW = [
         }
 
         // Trae legajos/PIN administrados desde la hoja "Empleados" (si existe)
-        cargarEmpleadosDesdeExcel();
+        cargaEmpleados = cargarEmpleadosDesdeExcel();
 
         addItemBtn.addEventListener('click', () => {
             if (!sesion) { abrirLogin('Identifícate con tu legajo para operar.'); return; }
