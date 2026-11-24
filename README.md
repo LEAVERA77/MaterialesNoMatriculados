@@ -291,3 +291,10 @@ formulario completa solo la **unidad** desde el stock y normaliza el nombre.
 ### Alcance de este cambio en producción
 
 El despliegue del ingreso y del buscador modifica únicamente el código de la aplicación y de la GitHub Action. No ejecuta ingresos de prueba ni reescribe el Excel existente. Los retiros, cantidades, legajos, PIN e historial actuales se conservan; la nueva función de ingreso sólo modifica las filas que se ingresen expresamente a partir de su habilitación. La autorización del ingreso se limita a los tres legajos que ya están en `ADMIN_PINES` (`12684`, `16088` y `10246`); sus permisos de restablecimiento de PIN no cambian.
+
+## Permisos de visualización y operación
+
+* **Administradores activos:** pueden consultar Stock (se mantiene la contraseña existente), abrir Historial, registrar ingresos de materiales, retirar y devolver.
+* **Empleados:** solo pueden retirar y devolver. Los accesos a Stock e Historial y a la carga de ingresos se ocultan y sus funciones comprueban el rol de administrador. Al cerrar sesión se cierran esas ventanas y se limpia su contenido visible.
+
+**Límite de privacidad:** es un bloqueo de la interfaz de la aplicación, no una protección confidencial del archivo. El Excel se publica en un repositorio público y una persona con el enlace puede descargarlo directamente; un usuario técnico también puede inspeccionar recursos cargados por el navegador.
