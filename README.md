@@ -185,3 +185,109 @@ apps-script/Code.gs                 Web App de Google (recibe el POST y dispara 
 * La GitHub Action valida legajo y stock, y escribe las columnas nuevas.
 * Se corrigió `deploy.yml` (fallaba con `npm ci`: el proyecto Next ya no existe).
 * Se eliminó un script de Cloudflare que había quedado pegado al final del HTML y no cumplía ninguna función.
+
+
+## 10. Ingreso de materiales (solo administradores autorizados)
+
+Ventana nueva para **cargar mercadería que entra al depósito**. Es la única operación que puede
+**sumar cantidades** y **dar de alta materiales nuevos**.
+
+### Quién puede usarla
+
+Doble control, igual que la gestión de legajos:
+
+1. **En la pantalla**: el botón **Ingreso de material** (verde, al lado de *Ver Stock*) sólo
+   aparece cuando la sesión iniciada pertenece a un legajo de `ADMIN_PINES` — hoy, **10246**.
+2. **En el servidor**: `scripts/actualizar_stock.py` rechaza el ingreso si el legajo que opera no
+   es administrador, **aunque alguien arme el pedido a mano** (por ejemplo, un legajo común
+   declarando `admin_legajo: 10246`). El registro se rechaza completo: no se escribe nada en el Excel.
+
+### Cómo se usa
+
+1. Identificarse con **administrador autorizado** + PIN → aparece el botón **Ingreso de material**.
+2. (Opcional) cargar **Remito / factura / proveedor**.
+3. Buscar el material: la lista muestra el **stock actual** de cada coincidencia.
+   * Si el material **existe**, se toma solo la unidad y se avisa: *"stock actual 10 kg → quedará 15 kg"*.
+   * Si el nombre **no está en el stock**, se avisa **"Material NUEVO"** y se piden **especificación** y **unidad**.
+4. Cargar la cantidad y **Agregar**. Se pueden cargar varias líneas; si repetís un material, se suma
+   en la misma línea (no se duplica).
+5. **Registrar ingreso** → se envía al servidor, sale el comprobante y, en segundo plano, la app
+   avisa cuando el movimiento ya aparece en el Excel.
+6. **Imprimir**: hay dos momentos útiles.
+   * En la ventana, el botón **Imprimir** saca el *remito de ingreso* con las líneas cargadas
+     (sirve para controlar contra lo que entrega el proveedor, antes de registrar).
+   * Después de registrar, el **comprobante** tiene su botón **Imprimir Ticket**.
+   * En **Historial → Ingresos** se puede imprimir la tabla filtrada.
+
+### Qué se escribe en el Excel
+
+| Situación | Hoja `Materiales` | Hoja `Historial` |
+|---|---|---|
+| El material ya existe | se **suma** la cantidad a la columna `CANTIDAD` | fila con `Operacion = INGRESO` |
+| El material no existe | **fila nueva al final** con descripción, especificación, unidad y cantidad (hereda el formato de la última fila) | fila con `Operacion = INGRESO` |
+
+En `Historial`, la columna `Uso` guarda el **remito / proveedor** (o *"Ingreso de mercadería"* si se
+dejó vacío), y se siguen completando `Legajo`, `Dispositivo` y `Huella`.
+
+### Cómo decide si un material "ya existe"
+
+La comparación es tolerante: **sin distinguir mayúsculas, acentos ni espacios de más**.
+`"  arco  PARA hoja SIERRA "` es el mismo material que `"Arco para hoja sierra"`, así que **no
+genera un duplicado**. El precio de esa tolerancia no esconde nada: si el nombre es realmente
+distinto (otra medida, otra marca), se da de alta como material nuevo, que es lo correcto.
+
+### Validaciones del servidor
+
+* Todo o nada: si una línea está mal, **no se escribe ninguna**.
+* Cantidad **mayor que cero** y menor a 1.000.000; máximo **50 líneas** por ingreso.
+* Descripción obligatoria (2 a 120 caracteres); unidad obligatoria (si falta, se usa `u.`).
+* El legajo que opera tiene que estar **activo** en la hoja `Empleados`.
+* Si el pedido trae `admin_legajo` distinto del `legajo` que opera, se rechaza (payload inconsistente).
+
+### No hace falta tocar el Apps Script
+
+El ingreso viaja por el **mismo canal** que un retiro (`operacion` + `items`), así que el
+`Code.gs` que ya está implementado (**build `general-2026-11-23-r5`**) lo despacha sin cambios.
+Sólo hay que actualizar el repositorio (push) y esperar el deploy de GitHub Pages.
+
+### Historial: filtro por tipo de operación
+
+La ventana de **Historial** suma un selector **Todas las operaciones / Retiros / Devoluciones /
+Ingresos**, y los ingresos se muestran en verde para distinguirlos de un vistazo.
+
+---
+
+
+## 11. Buscador de materiales del retiro (lista viva)
+
+El campo **Material** del formulario de retiro sugiere a medida que se escribe. Antes esas
+sugerencias salían de una **lista fija escrita en el código** (`MATERIALES_RAW`, 138 materiales),
+así que todo lo que se daba de alta desde *Ingreso de material* **no aparecía** para retirar.
+
+Ahora el buscador usa la **hoja `Materiales` del Excel** (lista viva):
+
+* Al abrir la página se lee el stock en segundo plano y se reemplaza la lista del código.
+* También se refresca al abrir la ventana de **Stock**, al abrir la de **Ingreso** y ~90 s
+  después de registrar un ingreso (lo que tarda la Action en publicar el Excel).
+* Si el Excel no se puede leer (sin conexión, por ejemplo), **queda la lista del código**: el
+  buscador nunca se queda vacío. Una lista vieja es mejor que ninguna sugerencia.
+* Nunca se muestran cantidades en las sugerencias: el stock sigue detrás de su contraseña. Sólo
+  se ve **nombre · especificación (unidad)**.
+
+### Búsqueda tolerante
+
+| Lo que se escribe | Encuentra |
+|---|---|
+| `union cu` (sin acento) | Unión Cu estañado tubo 21mm UCC4 |
+| `bateria 9v` | Batería 9 V |
+| `sinnta aisladora` (error de tipeo) | Cinta aisladora … |
+
+La comparación ignora mayúsculas, acentos y espacios de más; si no hay coincidencias, se usa
+distancia de edición sobre el nombre (no sobre la especificación, que es larga y arruinaba el
+cálculo). Además, si se escribe el **nombre completo a mano** sin tocar la sugerencia, el
+formulario completa solo la **unidad** desde el stock y normaliza el nombre.
+
+
+### Alcance de este cambio en producción
+
+El despliegue del ingreso y del buscador modifica únicamente el código de la aplicación y de la GitHub Action. No ejecuta ingresos de prueba ni reescribe el Excel existente. Los retiros, cantidades, legajos, PIN e historial actuales se conservan; la nueva función de ingreso sólo modifica las filas que se ingresen expresamente a partir de su habilitación. La autorización del ingreso se limita a los tres legajos que ya están en `ADMIN_PINES` (`12684`, `16088` y `10246`); sus permisos de restablecimiento de PIN no cambian.
